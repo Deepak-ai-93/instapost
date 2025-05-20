@@ -1,4 +1,6 @@
+
 import { config } from 'dotenv';
 config();
 
-import '@/ai/flows/generate-instagram-caption.ts';
+import '@/ai/flows/generate-post-details.ts';
+import '@/ai/flows/generate-image-from-prompt.ts';
