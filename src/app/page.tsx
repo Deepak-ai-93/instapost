@@ -13,13 +13,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3 } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
   const [userImageDescription, setUserImageDescription] = useState<string>("");
+  const [userEditInstruction, setUserEditInstruction] = useState<string>("");
   
   const [engagingCaption, setEngagingCaption] = useState<string>("");
   const [professionalCaption, setProfessionalCaption] = useState<string>("");
@@ -29,8 +30,8 @@ export default function InstaGeniusPage() {
   const [generatedImageDataUri, setGeneratedImageDataUri] = useState<string | null>(null);
   const [headlineText, setHeadlineText] = useState<string>("");
 
-
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isEditingImage, setIsEditingImage] = useState<boolean>(false);
   const [currentLoadingStep, setCurrentLoadingStep] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   
@@ -40,6 +41,7 @@ export default function InstaGeniusPage() {
     setUserNiche("");
     setUserCategory("");
     setUserImageDescription("");
+    setUserEditInstruction("");
     setEngagingCaption("");
     setProfessionalCaption("");
     setHashtags("");
@@ -67,6 +69,7 @@ export default function InstaGeniusPage() {
     setImageGenerationPrompt("");
     setGeneratedImageDataUri(null);
     setHeadlineText("");
+    setUserEditInstruction("");
 
 
     try {
@@ -74,7 +77,7 @@ export default function InstaGeniusPage() {
       const detailsResult = await generatePostDetails({ 
         userNiche, 
         userCategory,
-        userImageDescription: userImageDescription.trim() || undefined // Send undefined if empty
+        userImageDescription: userImageDescription.trim() || undefined
       });
       setEngagingCaption(detailsResult.engagingCaption);
       setProfessionalCaption(detailsResult.professionalCaption);
@@ -104,6 +107,38 @@ export default function InstaGeniusPage() {
       toast({ variant: "destructive", title: "Error", description: "Failed to generate AI content." });
     } finally {
       setIsLoading(false);
+      setCurrentLoadingStep("");
+    }
+  };
+
+  const handleApplyImageEdits = async () => {
+    if (!generatedImageDataUri) {
+      setError("No image to edit. Please generate an image first.");
+      toast({ variant: "destructive", title: "Error", description: "No image to edit." });
+      return;
+    }
+    if (!userEditInstruction.trim()) {
+      setError("Please enter an edit instruction.");
+      toast({ variant: "destructive", title: "Error", description: "Please enter an edit instruction." });
+      return;
+    }
+    setIsEditingImage(true);
+    setError(null);
+    try {
+      setCurrentLoadingStep("Applying image edits...");
+      const imageResult = await generateImageFromPrompt({
+        baseImageDataUri: generatedImageDataUri,
+        editInstruction: userEditInstruction,
+      });
+      setGeneratedImageDataUri(imageResult.imageDataUri);
+      toast({ title: "Success!", description: "Image edits applied." });
+      setUserEditInstruction(""); // Clear after successful edit
+    } catch (err) {
+      console.error("Failed to apply image edits:", err);
+      setError("Failed to apply image edits. Please try again.");
+      toast({ variant: "destructive", title: "Error", description: "Failed to apply image edits." });
+    } finally {
+      setIsEditingImage(false);
       setCurrentLoadingStep("");
     }
   };
@@ -148,14 +183,14 @@ export default function InstaGeniusPage() {
             <h1 className="text-5xl font-bold text-primary">InstaGenius Pro</h1>
           </div>
           <p className="text-xl text-muted-foreground">
-            Craft compelling Instagram posts: AI-driven content, enhanced image generation & more!
+            Craft compelling Instagram posts: AI-driven content, enhanced image generation & interactive editing!
           </p>
         </header>
 
         <Card className="w-full max-w-3xl shadow-xl rounded-xl overflow-hidden mb-8">
           <CardHeader>
             <CardTitle className="flex items-center"><FileText className="mr-2 h-6 w-6 text-primary" /> Define Your Content Focus</CardTitle>
-            <CardDescription>Enter niche, category, and optionally describe your desired image. AI will generate post ideas, captions, hashtags, and a unique image.</CardDescription>
+            <CardDescription>Enter niche, category, and optionally describe your desired image. AI will generate post ideas, captions, hashtags, and a unique image. You can then edit the image with text commands.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 sm:p-10 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -171,6 +206,7 @@ export default function InstaGeniusPage() {
                   placeholder="e.g., Sustainable Travel, Gourmet Coffee"
                   className="focus:ring-accent focus:border-accent text-base"
                   required
+                  disabled={isLoading || isEditingImage}
                 />
                 <p className="text-xs text-muted-foreground mt-1">The specific topic or theme.</p>
               </div>
@@ -186,6 +222,7 @@ export default function InstaGeniusPage() {
                   placeholder="e.g., Eco-tourism, Food & Drink"
                   className="focus:ring-accent focus:border-accent text-base"
                   required
+                  disabled={isLoading || isEditingImage}
                 />
                 <p className="text-xs text-muted-foreground mt-1">The broader classification.</p>
               </div>
@@ -202,8 +239,9 @@ export default function InstaGeniusPage() {
                   placeholder="e.g., A vintage map background, passport stamps scattered, vibrant teal and orange colors, text 'Adventure Awaits' in bold script font at the top."
                   rows={3}
                   className="focus:ring-accent focus:border-accent text-base resize-none"
+                  disabled={isLoading || isEditingImage}
                 />
-                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position. AI will enhance this.</p>
+                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position. AI will enhance this for initial generation.</p>
             </div>
             
             <div className="pt-2">
@@ -213,7 +251,7 @@ export default function InstaGeniusPage() {
                 <div className="flex space-x-2">
                     <Button
                         onClick={handleGenerateContent}
-                        disabled={!canGenerate || isLoading}
+                        disabled={!canGenerate || isLoading || isEditingImage}
                         className="flex-grow bg-accent hover:bg-accent/90 text-accent-foreground text-base py-6"
                     >
                         {isLoading ? (
@@ -227,17 +265,17 @@ export default function InstaGeniusPage() {
                       variant="outline" 
                       onClick={resetAllContent} 
                       aria-label="Clear all inputs and generated content" 
-                      disabled={isLoading && !userNiche && !userCategory && !userImageDescription && !hasGeneratedContent}
+                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !hasGeneratedContent && !userEditInstruction}
                     >
                         Clear All
                     </Button>
                 </div>
-                {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+                {error && !isLoading && !isEditingImage && <p className="text-sm text-destructive mt-2">{error}</p>}
             </div>
           </CardContent>
         </Card>
 
-        {isLoading && currentLoadingStep.includes("Generating AI image") && imageGenerationPrompt && (
+        {(isLoading || isEditingImage) && currentLoadingStep.includes("Generating AI image") && imageGenerationPrompt && (
             <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden mb-8">
                 <CardHeader>
                     <CardTitle className="flex items-center"><Palette className="mr-2 h-6 w-6 text-primary" /> AI Image Generation in Progress</CardTitle>
@@ -250,15 +288,27 @@ export default function InstaGeniusPage() {
             </Card>
         )}
 
-        {hasGeneratedContent && !isLoading && (
+         {(isLoading || isEditingImage) && currentLoadingStep.includes("Applying image edits") && (
+            <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden mb-8">
+                <CardHeader>
+                    <CardTitle className="flex items-center"><Edit3 className="mr-2 h-6 w-6 text-primary" /> Applying Image Edits</CardTitle>
+                </CardHeader>
+                <CardContent className="p-6 sm:p-10 text-center">
+                    <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-accent" />
+                    <p className="text-lg text-muted-foreground">Regenerating image with your edits... this may take a moment.</p>
+                </CardContent>
+            </Card>
+        )}
+
+        {hasGeneratedContent && !isLoading && !isEditingImage && (
           <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-accent" /> AI Enhanced Content for "{userNiche}" ({userCategory})</CardTitle>
-              <CardDescription>Review your AI-generated content. The headline is "{headlineText}". Edit the engaging caption as needed.</CardDescription>
+              <CardDescription>Review your AI-generated content. The headline is "{headlineText}". You can further edit the generated image below.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 sm:p-10 space-y-8">
               <div className="grid md:grid-cols-2 gap-8 items-start">
-                {/* Generated Image */}
+                {/* Generated Image & Editing Section */}
                 <div className="space-y-4">
                   <Label className="text-lg font-semibold text-foreground block">AI Generated Image</Label>
                    <div className="aspect-square border-2 border-dashed border-accent rounded-lg flex items-center justify-center bg-muted/30 overflow-hidden relative group">
@@ -279,18 +329,48 @@ export default function InstaGeniusPage() {
                     )}
                   </div>
                   {generatedImageDataUri && (
-                    <Button
-                      onClick={handleDownloadGeneratedImage}
-                      variant="outline"
-                      className="w-full"
-                    >
-                      <Download className="h-5 w-5 mr-2" />
-                      Download Generated Image
-                    </Button>
+                    <>
+                      <Button
+                        onClick={handleDownloadGeneratedImage}
+                        variant="outline"
+                        className="w-full"
+                      >
+                        <Download className="h-5 w-5 mr-2" />
+                        Download Generated Image
+                      </Button>
+                       <Separator />
+                      <div>
+                        <Label htmlFor="edit-instruction-input" className="text-md font-semibold text-foreground mb-2 block">
+                          Edit Image (Optional)
+                        </Label>
+                        <Textarea
+                          id="edit-instruction-input"
+                          value={userEditInstruction}
+                          onChange={(e) => setUserEditInstruction(e.target.value)}
+                          placeholder="e.g., Change text color to blue, make background darker, add a small logo in the corner..."
+                          rows={3}
+                          className="focus:ring-accent focus:border-accent text-sm resize-none"
+                          disabled={isEditingImage || isLoading}
+                        />
+                         <Button
+                            onClick={handleApplyImageEdits}
+                            disabled={!userEditInstruction.trim() || isEditingImage || isLoading || !generatedImageDataUri}
+                            className="w-full mt-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                          >
+                            {isEditingImage ? (
+                              <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                            ) : (
+                              <Edit className="h-5 w-5 mr-2" />
+                            )}
+                            {isEditingImage ? currentLoadingStep : "Apply Edits & Regenerate"}
+                          </Button>
+                          {error && isEditingImage && <p className="text-sm text-destructive mt-2">{error}</p>}
+                      </div>
+                    </>
                   )}
                    {imageGenerationPrompt && (
                     <div className="p-3 bg-muted/50 rounded-md">
-                        <Label className="text-xs text-foreground font-medium block mb-1">Image Prompt Used (Enhanced by AI):</Label>
+                        <Label className="text-xs text-foreground font-medium block mb-1">Initial Image Prompt (Enhanced by AI):</Label>
                         <p className="text-xs text-muted-foreground break-words">
                            {imageGenerationPrompt}
                         </p>
@@ -323,6 +403,7 @@ export default function InstaGeniusPage() {
                       placeholder="Engaging caption"
                       rows={5}
                       className="resize-none focus:ring-accent focus:border-accent"
+                      disabled={isLoading || isEditingImage}
                     />
                     <Button onClick={() => handleCopyText(engagingCaption, "Engaging caption")} variant="outline" size="sm" className="mt-2" disabled={!engagingCaption}>
                         <Copy className="h-4 w-4 mr-2" /> Copy
