@@ -13,13 +13,10 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, UploadCloud, Download, Copy, Sparkles, Image as ImageIcon, Scissors, Wand2, Palette } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function InstaGeniusPage() {
-  const [uploadedImageFile, setUploadedImageFile] = useState<File | null>(null);
-  const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
-  
   const [userNiche, setUserNiche] = useState<string>("");
   const [engagingCaption, setEngagingCaption] = useState<string>("");
   const [professionalCaption, setProfessionalCaption] = useState<string>("");
@@ -33,22 +30,10 @@ export default function InstaGeniusPage() {
   const [currentLoadingStep, setCurrentLoadingStep] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
-  useEffect(() => {
-    if (uploadedImageFile) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(uploadedImageFile);
-    } else {
-      setImagePreviewUrl(null);
-    }
-  }, [uploadedImageFile]);
-
-  const resetGeneratedContent = () => {
+  const resetAllContent = () => {
+    setUserNiche("");
     setEngagingCaption("");
     setProfessionalCaption("");
     setHashtags("");
@@ -59,27 +44,27 @@ export default function InstaGeniusPage() {
     setError(null);
   };
 
-  const handleImageChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setUploadedImageFile(file);
-      resetGeneratedContent(); // Also reset AI content if new image is uploaded
-    }
-  };
-
   const handleGenerateContent = async () => {
-    if (!imagePreviewUrl) {
-      setError("Please upload an image first.");
-      toast({ variant: "destructive", title: "Error", description: "Please upload an image first." });
+    if (!userNiche.trim()) {
+      setError("Please enter a niche first.");
+      toast({ variant: "destructive", title: "Error", description: "Please enter a niche first." });
       return;
     }
     setIsLoading(true);
     setError(null);
-    resetGeneratedContent();
+    // Reset only generated content, keep niche
+    setEngagingCaption("");
+    setProfessionalCaption("");
+    setHashtags("");
+    setSuggestedPostTime("");
+    setCategory("");
+    setImageGenerationPrompt("");
+    setGeneratedImageDataUri(null);
+
 
     try {
       setCurrentLoadingStep("Generating post details...");
-      const detailsResult = await generatePostDetails({ photoDataUri: imagePreviewUrl, userNiche });
+      const detailsResult = await generatePostDetails({ userNiche });
       setEngagingCaption(detailsResult.engagingCaption);
       setProfessionalCaption(detailsResult.professionalCaption);
       setHashtags(detailsResult.hashtags);
@@ -99,7 +84,7 @@ export default function InstaGeniusPage() {
           toast({ variant: "destructive", title: "Image Generation Error", description: "Text details generated, but AI image creation failed." });
         }
       } else {
-         toast({ title: "Success!", description: "AI content generated. No image prompt was provided." });
+         toast({ title: "Success!", description: "AI content generated. No image prompt was provided by the AI." });
       }
 
     } catch (err) {
@@ -119,19 +104,13 @@ export default function InstaGeniusPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(link.href); // Clean up if it was an object URL
-  };
-
-  const handleDownloadUploadedImage = () => {
-    if (uploadedImageFile && imagePreviewUrl) {
-      downloadDataUri(imagePreviewUrl, uploadedImageFile.name);
-      toast({ title: "Success", description: "Uploaded image download started!" });
-    }
+    // For data URIs, URL.revokeObjectURL is not needed and can cause errors.
+    // URL.revokeObjectURL(link.href); 
   };
   
   const handleDownloadGeneratedImage = () => {
     if (generatedImageDataUri) {
-      downloadDataUri(generatedImageDataUri, `ai_generated_image_${Date.now()}.png`);
+      downloadDataUri(generatedImageDataUri, `ai_generated_image_for_${userNiche.replace(/\s+/g, '_')}_${Date.now()}.png`);
       toast({ title: "Success", description: "AI generated image download started!" });
     }
   };
@@ -148,17 +127,7 @@ export default function InstaGeniusPage() {
     }
   };
 
-  const handleClearImage = () => {
-    setUploadedImageFile(null);
-    setImagePreviewUrl(null);
-    setUserNiche("");
-    resetGeneratedContent();
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
-  };
-
-  const hasGeneratedContent = engagingCaption || professionalCaption || hashtags || suggestedPostTime || category || generatedImageDataUri;
+  const hasGeneratedContent = engagingCaption || professionalCaption || hashtags || suggestedPostTime || category || generatedImageDataUri || imageGenerationPrompt;
 
   return (
     <>
@@ -169,102 +138,40 @@ export default function InstaGeniusPage() {
             <h1 className="text-5xl font-bold text-primary">InstaGenius Pro</h1>
           </div>
           <p className="text-xl text-muted-foreground">
-            Craft compelling Instagram posts with advanced AI assistance
+            Craft compelling Instagram posts with AI: Niche-driven content & image generation
           </p>
         </header>
 
-        <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden mb-8">
+        <Card className="w-full max-w-2xl shadow-xl rounded-xl overflow-hidden mb-8">
           <CardHeader>
-            <CardTitle className="flex items-center"><UploadCloud className="mr-2 h-6 w-6 text-primary" /> Upload & Configure</CardTitle>
-            <CardDescription>Start by uploading your image and specifying a niche for your post.</CardDescription>
+            <CardTitle className="flex items-center"><FileText className="mr-2 h-6 w-6 text-primary" /> Define Your Niche</CardTitle>
+            <CardDescription>Enter a niche, and AI will generate post ideas, captions, hashtags, and a unique image for you.</CardDescription>
           </CardHeader>
-          <CardContent className="p-6 sm:p-10">
-            <div className="grid md:grid-cols-2 gap-8 items-start">
-              {/* Left Column: Image Upload */}
-              <div className="space-y-6 flex flex-col">
-                <div>
-                  <Label htmlFor="image-upload" className="text-lg font-semibold text-foreground mb-2 block">
-                    1. Upload Your Image
-                  </Label>
-                  <div className="flex items-center space-x-2">
-                    <Label
-                      htmlFor="image-upload"
-                      className="flex-grow cursor-pointer inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 h-10 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90"
-                    >
-                      <UploadCloud className="h-5 w-5 mr-2" />
-                      Select Image
-                    </Label>
-                    <Input
-                      id="image-upload"
-                      type="file"
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      ref={fileInputRef}
-                    />
-                    {uploadedImageFile && (
-                       <Button variant="outline" size="icon" onClick={handleClearImage} aria-label="Clear image and settings">
-                         <Scissors className="h-5 w-5" />
-                       </Button>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF up to 10MB.</p>
-                </div>
-
-                <div className="aspect-[4/3] border-2 border-dashed border-border rounded-lg flex items-center justify-center bg-muted/50 overflow-hidden relative group">
-                  {imagePreviewUrl ? (
-                    <NextImage
-                      src={imagePreviewUrl}
-                      alt="Uploaded image preview"
-                      layout="fill"
-                      objectFit="contain"
-                      data-ai-hint="user uploaded content"
-                    />
-                  ) : (
-                    <div className="text-center text-muted-foreground p-4">
-                      <ImageIcon className="h-16 w-16 mx-auto mb-2 opacity-50" />
-                      <p className="font-medium">Your image will appear here</p>
-                      <p className="text-sm">Upload an image to get started</p>
-                    </div>
-                  )}
-                </div>
-                {imagePreviewUrl && (
-                    <Button
-                        onClick={handleDownloadUploadedImage}
-                        variant="outline"
-                        className="w-full"
-                    >
-                        <Download className="h-5 w-5 mr-2" />
-                        Download Uploaded Image
-                    </Button>
-                )}
-              </div>
-
-              {/* Right Column: Niche & Generate Button */}
-              <div className="space-y-6 flex flex-col">
-                <div>
-                  <Label htmlFor="niche-input" className="text-lg font-semibold text-foreground mb-2 block">
-                    2. Specify Niche (Optional)
-                  </Label>
-                  <Input
-                    id="niche-input"
-                    type="text"
-                    value={userNiche}
-                    onChange={(e) => setUserNiche(e.target.value)}
-                    placeholder="e.g., Travel, Food, Fitness, Tech"
-                    className="focus:ring-accent focus:border-accent"
-                  />
-                   <p className="text-xs text-muted-foreground mt-1">Help AI tailor content to your specific category.</p>
-                </div>
-                
-                <div className="pt-4">
-                    <Label className="text-lg font-semibold text-foreground mb-2 block">
-                        3. Generate Content
-                    </Label>
+          <CardContent className="p-6 sm:p-10 space-y-6">
+            <div>
+              <Label htmlFor="niche-input" className="text-lg font-semibold text-foreground mb-2 block">
+                1. Specify Your Niche
+              </Label>
+              <Input
+                id="niche-input"
+                type="text"
+                value={userNiche}
+                onChange={(e) => setUserNiche(e.target.value)}
+                placeholder="e.g., Sustainable Travel, Gourmet Coffee, AI in Art"
+                className="focus:ring-accent focus:border-accent text-base"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Be specific for best results! AI will use this to create all content.</p>
+            </div>
+            
+            <div className="pt-2">
+                <Label className="text-lg font-semibold text-foreground mb-2 block">
+                    2. Generate Content & Image
+                </Label>
+                <div className="flex space-x-2">
                     <Button
                         onClick={handleGenerateContent}
-                        disabled={!imagePreviewUrl || isLoading}
-                        className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-base py-6"
+                        disabled={!userNiche.trim() || isLoading}
+                        className="flex-grow bg-accent hover:bg-accent/90 text-accent-foreground text-base py-6"
                     >
                         {isLoading ? (
                         <Loader2 className="h-6 w-6 mr-2 animate-spin" />
@@ -273,14 +180,16 @@ export default function InstaGeniusPage() {
                         )}
                         {isLoading ? currentLoadingStep : "Generate AI Content & Image"}
                     </Button>
-                    {error && <p className="text-sm text-destructive mt-2">{error}</p>}
+                    <Button variant="outline" onClick={resetAllContent} aria-label="Clear niche and all generated content" disabled={isLoading && !userNiche && !hasGeneratedContent}>
+                        Clear All
+                    </Button>
                 </div>
-              </div>
+                {error && <p className="text-sm text-destructive mt-2">{error}</p>}
             </div>
           </CardContent>
         </Card>
 
-        {isLoading && currentLoadingStep.includes("Generating AI image") && (
+        {isLoading && currentLoadingStep.includes("Generating AI image") && imageGenerationPrompt && (
             <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden mb-8">
                 <CardHeader>
                     <CardTitle className="flex items-center"><Palette className="mr-2 h-6 w-6 text-primary" /> AI Image Generation in Progress</CardTitle>
@@ -288,7 +197,7 @@ export default function InstaGeniusPage() {
                 <CardContent className="p-6 sm:p-10 text-center">
                     <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-accent" />
                     <p className="text-lg text-muted-foreground">Creating your unique AI image... this may take a moment.</p>
-                    <p className="text-sm text-muted-foreground mt-1">{imageGenerationPrompt.substring(0,100)}...</p>
+                    <p className="text-sm text-muted-foreground mt-1">Using prompt: "{imageGenerationPrompt.substring(0,100)}..."</p>
                 </CardContent>
             </Card>
         )}
@@ -296,7 +205,7 @@ export default function InstaGeniusPage() {
         {hasGeneratedContent && !isLoading && (
           <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden">
             <CardHeader>
-              <CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-accent" /> AI Enhanced Content</CardTitle>
+              <CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-accent" /> AI Enhanced Content for "{userNiche}"</CardTitle>
               <CardDescription>Review your AI-generated content. Edit the engaging caption as needed.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 sm:p-10 space-y-8">
@@ -308,16 +217,16 @@ export default function InstaGeniusPage() {
                     {generatedImageDataUri ? (
                       <NextImage
                         src={generatedImageDataUri}
-                        alt="AI generated image"
+                        alt={`AI generated image for ${userNiche}`}
                         layout="fill"
                         objectFit="contain"
-                        data-ai-hint="ai generated image"
+                        data-ai-hint="ai generated niche"
                       />
                     ) : (
                       <div className="text-center text-muted-foreground p-4">
                         <ImageIcon className="h-16 w-16 mx-auto mb-2 opacity-50" />
                         <p className="font-medium">Generated image will appear here</p>
-                        {imageGenerationPrompt ? <p className="text-sm">Attempting to generate image for: "{imageGenerationPrompt.substring(0,50)}..."</p> : <p className="text-sm">No image prompt was available for generation.</p>}
+                        {imageGenerationPrompt ? <p className="text-sm">Image based on prompt: "{imageGenerationPrompt.substring(0,50)}..."</p> : <p className="text-sm">No image could be generated for this niche.</p>}
                       </div>
                     )}
                   </div>
@@ -333,9 +242,13 @@ export default function InstaGeniusPage() {
                   )}
                    {imageGenerationPrompt && (
                     <div className="p-3 bg-muted/50 rounded-md">
+                        <Label className="text-xs text-foreground font-medium block mb-1">Image Prompt Used:</Label>
                         <p className="text-xs text-muted-foreground">
-                            <strong className="text-foreground">Image Prompt:</strong> {imageGenerationPrompt}
+                           {imageGenerationPrompt}
                         </p>
+                         <Button onClick={() => handleCopyText(imageGenerationPrompt, "Image prompt")} variant="link" size="sm" className="text-xs p-0 h-auto mt-1" disabled={!imageGenerationPrompt}>
+                            <Copy className="h-3 w-3 mr-1" /> Copy Prompt
+                        </Button>
                     </div>
                    )}
                 </div>
@@ -359,9 +272,11 @@ export default function InstaGeniusPage() {
                   
                   <div>
                     <Label htmlFor="professional-caption" className="text-lg font-semibold text-foreground mb-1 block">Professional Caption</Label>
-                    <p id="professional-caption" className="text-sm p-3 bg-muted/50 rounded-md whitespace-pre-wrap min-h-[60px]">
-                        {professionalCaption || "Not generated."}
-                    </p>
+                    <div className="p-3 bg-muted/50 rounded-md min-h-[100px]">
+                        <p id="professional-caption" className="text-sm whitespace-pre-wrap">
+                            {professionalCaption || "Not generated."}
+                        </p>
+                    </div>
                      <Button onClick={() => handleCopyText(professionalCaption, "Professional caption")} variant="outline" size="sm" className="mt-2" disabled={!professionalCaption}>
                         <Copy className="h-4 w-4 mr-2" /> Copy
                     </Button>
@@ -374,24 +289,30 @@ export default function InstaGeniusPage() {
               <div className="grid md:grid-cols-3 gap-6">
                 <div>
                     <Label htmlFor="hashtags" className="text-base font-semibold text-foreground mb-1 block">Hashtags</Label>
-                    <p id="hashtags" className="text-sm p-3 bg-muted/50 rounded-md whitespace-pre-wrap min-h-[40px]">
-                        {hashtags || "Not generated."}
-                    </p>
+                    <div className="p-3 bg-muted/50 rounded-md min-h-[60px]">
+                        <p id="hashtags" className="text-sm whitespace-pre-wrap">
+                            {hashtags || "Not generated."}
+                        </p>
+                    </div>
                      <Button onClick={() => handleCopyText(hashtags, "Hashtags")} variant="outline" size="sm" className="mt-2" disabled={!hashtags}>
                         <Copy className="h-4 w-4 mr-2" /> Copy
                     </Button>
                 </div>
                 <div>
                     <Label htmlFor="category" className="text-base font-semibold text-foreground mb-1 block">Category</Label>
-                    <p id="category" className="text-sm p-3 bg-muted/50 rounded-md min-h-[40px]">
-                        {category || "Not generated."}
-                    </p>
+                    <div className="p-3 bg-muted/50 rounded-md min-h-[60px]">
+                        <p id="category" className="text-sm">
+                            {category || "Not generated."}
+                        </p>
+                    </div>
                 </div>
                 <div>
                     <Label htmlFor="post-time" className="text-base font-semibold text-foreground mb-1 block">Suggested Post Time</Label>
-                    <p id="post-time" className="text-sm p-3 bg-muted/50 rounded-md min-h-[40px]">
-                        {suggestedPostTime || "Not generated."}
-                    </p>
+                     <div className="p-3 bg-muted/50 rounded-md min-h-[60px]">
+                        <p id="post-time" className="text-sm">
+                            {suggestedPostTime || "Not generated."}
+                        </p>
+                    </div>
                 </div>
               </div>
 
