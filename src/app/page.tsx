@@ -13,18 +13,22 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
+  const [userImageDescription, setUserImageDescription] = useState<string>("");
+  
   const [engagingCaption, setEngagingCaption] = useState<string>("");
   const [professionalCaption, setProfessionalCaption] = useState<string>("");
   const [hashtags, setHashtags] = useState<string>("");
   const [suggestedPostTime, setSuggestedPostTime] = useState<string>("");
   const [imageGenerationPrompt, setImageGenerationPrompt] = useState<string>("");
   const [generatedImageDataUri, setGeneratedImageDataUri] = useState<string | null>(null);
+  const [headlineText, setHeadlineText] = useState<string>("");
+
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [currentLoadingStep, setCurrentLoadingStep] = useState<string>("");
@@ -35,12 +39,14 @@ export default function InstaGeniusPage() {
   const resetAllContent = () => {
     setUserNiche("");
     setUserCategory("");
+    setUserImageDescription("");
     setEngagingCaption("");
     setProfessionalCaption("");
     setHashtags("");
     setSuggestedPostTime("");
     setImageGenerationPrompt("");
     setGeneratedImageDataUri(null);
+    setHeadlineText("");
     setError(null);
   };
 
@@ -53,23 +59,29 @@ export default function InstaGeniusPage() {
     }
     setIsLoading(true);
     setError(null);
-    // Reset only generated content, keep niche and category
+    // Reset only generated content, keep inputs
     setEngagingCaption("");
     setProfessionalCaption("");
     setHashtags("");
     setSuggestedPostTime("");
     setImageGenerationPrompt("");
     setGeneratedImageDataUri(null);
+    setHeadlineText("");
 
 
     try {
       setCurrentLoadingStep("Generating post details...");
-      const detailsResult = await generatePostDetails({ userNiche, userCategory });
+      const detailsResult = await generatePostDetails({ 
+        userNiche, 
+        userCategory,
+        userImageDescription: userImageDescription.trim() || undefined // Send undefined if empty
+      });
       setEngagingCaption(detailsResult.engagingCaption);
       setProfessionalCaption(detailsResult.professionalCaption);
       setHashtags(detailsResult.hashtags);
       setSuggestedPostTime(detailsResult.suggestedPostTime);
       setImageGenerationPrompt(detailsResult.imageGenerationPrompt);
+      setHeadlineText(detailsResult.headlineText);
 
       if (detailsResult.imageGenerationPrompt) {
         setCurrentLoadingStep("Generating AI image...");
@@ -124,7 +136,7 @@ export default function InstaGeniusPage() {
     }
   };
 
-  const hasGeneratedContent = engagingCaption || professionalCaption || hashtags || suggestedPostTime || generatedImageDataUri || imageGenerationPrompt;
+  const hasGeneratedContent = engagingCaption || professionalCaption || hashtags || suggestedPostTime || generatedImageDataUri || imageGenerationPrompt || headlineText;
   const canGenerate = userNiche.trim() && userCategory.trim();
 
   return (
@@ -136,20 +148,20 @@ export default function InstaGeniusPage() {
             <h1 className="text-5xl font-bold text-primary">InstaGenius Pro</h1>
           </div>
           <p className="text-xl text-muted-foreground">
-            Craft compelling Instagram posts with AI: Niche & Category-driven content & image generation
+            Craft compelling Instagram posts: AI-driven content, enhanced image generation & more!
           </p>
         </header>
 
-        <Card className="w-full max-w-2xl shadow-xl rounded-xl overflow-hidden mb-8">
+        <Card className="w-full max-w-3xl shadow-xl rounded-xl overflow-hidden mb-8">
           <CardHeader>
             <CardTitle className="flex items-center"><FileText className="mr-2 h-6 w-6 text-primary" /> Define Your Content Focus</CardTitle>
-            <CardDescription>Enter a niche and category, and AI will generate post ideas, captions, hashtags, and a unique image for you.</CardDescription>
+            <CardDescription>Enter niche, category, and optionally describe your desired image. AI will generate post ideas, captions, hashtags, and a unique image.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 sm:p-10 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="niche-input" className="text-lg font-semibold text-foreground mb-2 block">
-                  1. Specify Niche
+                  1. Specify Niche*
                 </Label>
                 <Input
                   id="niche-input"
@@ -158,28 +170,45 @@ export default function InstaGeniusPage() {
                   onChange={(e) => setUserNiche(e.target.value)}
                   placeholder="e.g., Sustainable Travel, Gourmet Coffee"
                   className="focus:ring-accent focus:border-accent text-base"
+                  required
                 />
                 <p className="text-xs text-muted-foreground mt-1">The specific topic or theme.</p>
               </div>
               <div>
                 <Label htmlFor="category-input" className="text-lg font-semibold text-foreground mb-2 block">
-                  2. Specify Category
+                  2. Specify Category*
                 </Label>
                 <Input
                   id="category-input"
                   type="text"
                   value={userCategory}
                   onChange={(e) => setUserCategory(e.target.value)}
-                  placeholder="e.g., Eco-tourism, Food & Drink, AI Tools"
+                  placeholder="e.g., Eco-tourism, Food & Drink"
                   className="focus:ring-accent focus:border-accent text-base"
+                  required
                 />
                 <p className="text-xs text-muted-foreground mt-1">The broader classification.</p>
               </div>
             </div>
+
+            <div>
+                <Label htmlFor="image-description-input" className="text-lg font-semibold text-foreground mb-2 block">
+                  3. Describe Desired Image (Optional)
+                </Label>
+                <Textarea
+                  id="image-description-input"
+                  value={userImageDescription}
+                  onChange={(e) => setUserImageDescription(e.target.value)}
+                  placeholder="e.g., A vintage map background, passport stamps scattered, vibrant teal and orange colors, text 'Adventure Awaits' in bold script font at the top."
+                  rows={3}
+                  className="focus:ring-accent focus:border-accent text-base resize-none"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position. AI will enhance this.</p>
+            </div>
             
             <div className="pt-2">
                 <Label className="text-lg font-semibold text-foreground mb-2 block">
-                    3. Generate Content & Image
+                    4. Generate Content & Image
                 </Label>
                 <div className="flex space-x-2">
                     <Button
@@ -198,7 +227,7 @@ export default function InstaGeniusPage() {
                       variant="outline" 
                       onClick={resetAllContent} 
                       aria-label="Clear all inputs and generated content" 
-                      disabled={isLoading && !userNiche && !userCategory && !hasGeneratedContent}
+                      disabled={isLoading && !userNiche && !userCategory && !userImageDescription && !hasGeneratedContent}
                     >
                         Clear All
                     </Button>
@@ -216,7 +245,7 @@ export default function InstaGeniusPage() {
                 <CardContent className="p-6 sm:p-10 text-center">
                     <Loader2 className="h-12 w-12 mx-auto mb-4 animate-spin text-accent" />
                     <p className="text-lg text-muted-foreground">Creating your unique AI image... this may take a moment.</p>
-                    <p className="text-sm text-muted-foreground mt-1">Using prompt: "{imageGenerationPrompt.substring(0,100)}..."</p>
+                    {imageGenerationPrompt && <p className="text-sm text-muted-foreground mt-1">Using prompt: "{imageGenerationPrompt.substring(0,100)}..."</p>}
                 </CardContent>
             </Card>
         )}
@@ -225,7 +254,7 @@ export default function InstaGeniusPage() {
           <Card className="w-full max-w-4xl shadow-xl rounded-xl overflow-hidden">
             <CardHeader>
               <CardTitle className="flex items-center"><Sparkles className="mr-2 h-6 w-6 text-accent" /> AI Enhanced Content for "{userNiche}" ({userCategory})</CardTitle>
-              <CardDescription>Review your AI-generated content. Edit the engaging caption as needed.</CardDescription>
+              <CardDescription>Review your AI-generated content. The headline is "{headlineText}". Edit the engaging caption as needed.</CardDescription>
             </CardHeader>
             <CardContent className="p-6 sm:p-10 space-y-8">
               <div className="grid md:grid-cols-2 gap-8 items-start">
@@ -236,7 +265,7 @@ export default function InstaGeniusPage() {
                     {generatedImageDataUri ? (
                       <NextImage
                         src={generatedImageDataUri}
-                        alt={`AI generated image for ${userNiche} - ${userCategory}`}
+                        alt={`AI generated image for ${userNiche} - ${userCategory} with headline "${headlineText}"`}
                         layout="fill"
                         objectFit="contain"
                         data-ai-hint={`${userNiche.split(" ")[0] || ""} ${userCategory.split(" ")[0] || ""}`.trim()}
@@ -261,8 +290,8 @@ export default function InstaGeniusPage() {
                   )}
                    {imageGenerationPrompt && (
                     <div className="p-3 bg-muted/50 rounded-md">
-                        <Label className="text-xs text-foreground font-medium block mb-1">Image Prompt Used:</Label>
-                        <p className="text-xs text-muted-foreground">
+                        <Label className="text-xs text-foreground font-medium block mb-1">Image Prompt Used (Enhanced by AI):</Label>
+                        <p className="text-xs text-muted-foreground break-words">
                            {imageGenerationPrompt}
                         </p>
                          <Button onClick={() => handleCopyText(imageGenerationPrompt, "Image prompt")} variant="link" size="sm" className="text-xs p-0 h-auto mt-1" disabled={!imageGenerationPrompt}>
@@ -274,6 +303,17 @@ export default function InstaGeniusPage() {
 
                 {/* Generated Text Details */}
                 <div className="space-y-6">
+                  {headlineText && (
+                     <div>
+                        <Label htmlFor="headline-text" className="text-lg font-semibold text-foreground mb-1 block">Generated Headline</Label>
+                         <div className="p-3 bg-primary/10 rounded-md">
+                            <p id="headline-text" className="text-lg font-semibold text-primary text-center">
+                                "{headlineText}"
+                            </p>
+                        </div>
+                    </div>
+                  )}
+
                   <div>
                     <Label htmlFor="engaging-caption" className="text-lg font-semibold text-foreground mb-1 block">Engaging Caption</Label>
                     <Textarea
