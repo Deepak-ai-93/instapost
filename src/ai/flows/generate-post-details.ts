@@ -16,7 +16,7 @@ const GeneratePostDetailsInputSchema = z.object({
   userNiche: z.string().describe('The user-provided niche for the post.'),
   userCategory: z.string().describe('The user-provided category for the post.'),
   userImageDescription: z.string().optional().describe('Optional user-provided details about desired image elements, colors, text orientation, positions, etc. The AI will enhance and incorporate this.'),
-  userCompanyLogoDescription: z.string().optional().describe('Optional user-provided description for company logo placement or style (e.g., "leave space for logo in bottom-right", "a subtle circular motif top-left").'),
+  userLogoDataUri: z.string().optional().describe("Optional: The user's logo as a data URI. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
   userContactInfoDescription: z.string().optional().describe('Optional user-provided description for contact information (e.g., "area for phone number and email at the bottom", "stylized icons for phone/email").'),
   userSocialMediaDescription: z.string().optional().describe('Optional user-provided description for social media handles/icons (e.g., "generic social media icons at the footer", "space for Instagram handle").'),
 });
@@ -29,6 +29,7 @@ const GeneratePostDetailsOutputSchema = z.object({
   suggestedPostTime: z.string().describe('A suggestion for the best time to post this content (e.g., "Weekdays 9-11 AM EST") for the niche and category.'),
   headlineText: z.string().describe('A short, bold, and engaging headline (3-7 words) for the image. This should be a powerful hook or concise benefit, highly relevant to the niche, category, and designed for maximum engagement. It should be suitable for direct use as text on the image.'),
   imageGenerationPrompt: z.string().describe('The fully constructed image generation prompt, incorporating the user niche, category, generated headline, enhanced user image description, and branding considerations (logo, contact, social media), built upon a universal template. This prompt should aim for non-stock, content-rich visuals, considering social media aspect ratios (like 1:1 square or 4:5 portrait) and potentially including the headline text directly in the image design.'),
+  logoDataUriForImageGen: z.string().optional().describe("The user's logo data URI, passed through if provided, to be used by the image generation flow."),
 });
 export type GeneratePostDetailsOutput = z.infer<typeof GeneratePostDetailsOutputSchema>;
 
@@ -41,7 +42,7 @@ export async function generatePostDetails(
 const postDetailsSystemPrompt = ai.definePrompt({
   name: 'generatePostDetailsPrompt',
   input: {schema: GeneratePostDetailsInputSchema},
-  output: {schema: GeneratePostDetailsOutputSchema}, 
+  output: {schema: GeneratePostDetailsOutputSchema.omit({ logoDataUriForImageGen: true })}, // AI doesn't generate this, flow passes it.
   prompt: `You are an expert social media strategist and content creator specializing in maximizing engagement.
 Your task is to generate comprehensive details for an Instagram post.
 
@@ -50,14 +51,14 @@ User-provided Category: "{{{userCategory}}}"
 {{#if userImageDescription}}
 User-provided Image Description: "{{{userImageDescription}}}"
 {{/if}}
-{{#if userCompanyLogoDescription}}
-User-provided Company Logo Description: "{{{userCompanyLogoDescription}}}"
+{{#if userLogoDataUri}}
+User has provided a logo image. This logo will be passed to the image generator separately.
 {{/if}}
 {{#if userContactInfoDescription}}
-User-provided Contact Info Description: "{{{userContactInfoDescription}}}"
+User-provided Contact Info Ideas (Text): "{{{userContactInfoDescription}}}"
 {{/if}}
 {{#if userSocialMediaDescription}}
-User-provided Social Media Description: "{{{userSocialMediaDescription}}}"
+User-provided Social Media Ideas (Text): "{{{userSocialMediaDescription}}}"
 {{/if}}
 
 Based on this information, please generate the following:
@@ -93,12 +94,12 @@ Based on this information, please generate the following:
     *   For the "[DETAILED_IMAGE_DESCRIPTION_AREA]" part:
         *   Start with a general description based on "{{userNiche}}", "{{userCategory}}", and the generated \`headlineText\`. Aim for originality, visual appeal, and a content-rich design avoiding generic stock photo appearances. Describe a scene or concept in detail with rich visual language, focusing on elements, colors, textures, lighting, and overall mood.
         *   If a \`userImageDescription\` ("{{{userImageDescription}}}") was provided, you MUST expand upon it. Incorporate their specified elements, colors, text orientation, positions, and any other details. Enhance their description to make it richer, more vivid, and ensure it forms a coherent and effective part of the overall image prompt.
-        *   {{#if userCompanyLogoDescription}}Incorporate the user's company logo description: "{{{userCompanyLogoDescription}}}". For example, if they want space for a logo, describe how the design should accommodate this (e.g., "The bottom-left corner should have a clean, uncluttered area suitable for placing a logo."). If they describe a logo style, suggest incorporating that style or motif into the image.{{/if}}
-        *   {{#if userContactInfoDescription}}Incorporate the user's contact info description: "{{{userContactInfoDescription}}}". For example, suggest "subtle, stylized icons representing a phone and email at the bottom" or "a designated area at the lower edge for contact details."{{/if}}
-        *   {{#if userSocialMediaDescription}}Incorporate the user's social media description: "{{{userSocialMediaDescription}}}". For example, suggest "minimalist icons for common social media platforms like Instagram and Facebook near the footer" or "a clean strip at the bottom suitable for social media handles."{{/if}}
+        *   {{#if userLogoDataUri}}VERY IMPORTANT: The user has uploaded their own logo. This logo image itself will be provided to the image generator. Your task for this [DETAILED_IMAGE_DESCRIPTION_AREA] is to describe how the main generated image should be designed to ACCOMMODATE or COMPLEMENT this user-provided logo. For example, you might suggest: "Design the bottom-right corner with a clean, slightly textured area suitable for placing the user's logo." or "Ensure the color palette of the main image harmonizes with a typical company logo that might be overlaid." or "Incorporate a subtle circular motif in the top-left that echoes a common logo shape, where the user's logo might be placed." Do NOT try to describe the logo itself; just describe how the generated image should prepare for it or relate to it.{{/if}}
+        *   {{#if userContactInfoDescription}}For text-based contact info ideas: "{{{userContactInfoDescription}}}". Incorporate this by describing visual elements, for example, suggest "subtle, stylized icons representing a phone and email at the bottom" or "a designated area at the lower edge for contact details."{{/if}}
+        *   {{#if userSocialMediaDescription}}For text-based social media ideas: "{{{userSocialMediaDescription}}}". Incorporate this by describing visual elements, for example, suggest "minimalist icons for common social media platforms like Instagram and Facebook near the footer" or "a clean strip at the bottom suitable for social media handles."{{/if}}
         *   Combine all these aspects into a single, coherent paragraph for the "[DETAILED_IMAGE_DESCRIPTION_AREA]". Ensure this area focuses on visual descriptions and not just listing features.
 
-Ensure your output strictly adheres to the defined output schema for all fields. The final \`imageGenerationPrompt\` should be a single, complete string.
+Ensure your output strictly adheres to the defined output schema for all fields (excluding logoDataUriForImageGen, which is handled by the flow). The final \`imageGenerationPrompt\` should be a single, complete string.
 `,
 });
 
@@ -108,11 +109,17 @@ const generatePostDetailsFlow = ai.defineFlow(
     inputSchema: GeneratePostDetailsInputSchema,
     outputSchema: GeneratePostDetailsOutputSchema,
   },
-  async (input: GeneratePostDetailsInput) => {
-    const {output} = await postDetailsSystemPrompt(input);
+  async (input: GeneratePostDetailsInput): Promise<GeneratePostDetailsOutput> => {
+    const {output} = await postDetailsSystemPrompt(input); // Pass full input including userLogoDataUri
     if (!output) {
       throw new Error("Failed to generate post details from AI model.");
     }
-    return output; 
+    // The AI generates all fields except logoDataUriForImageGen. We add it here.
+    return {
+      ...output,
+      logoDataUriForImageGen: input.userLogoDataUri, 
+    }; 
   }
 );
+
+    

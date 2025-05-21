@@ -5,7 +5,7 @@ import type { ChangeEvent } from "react";
 import { useState, useEffect, useRef } from "react";
 import NextImage from "next/image";
 import { generatePostDetails, type GeneratePostDetailsOutput } from "@/ai/flows/generate-post-details";
-import { generateImageFromPrompt } from "@/ai/flows/generate-image-from-prompt";
+import { generateImageFromPrompt, type GenerateImageFromPromptInput } from "@/ai/flows/generate-image-from-prompt";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -13,14 +13,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, Share2 } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, Share2, UploadCloud } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
   const [userImageDescription, setUserImageDescription] = useState<string>("");
-  const [userCompanyLogoDescription, setUserCompanyLogoDescription] = useState<string>("");
+  const [userLogoDataUri, setUserLogoDataUri] = useState<string | null>(null);
   const [userContactInfoDescription, setUserContactInfoDescription] = useState<string>("");
   const [userSocialMediaDescription, setUserSocialMediaDescription] = useState<string>("");
   const [userEditInstruction, setUserEditInstruction] = useState<string>("");
@@ -39,12 +40,40 @@ export default function InstaGeniusPage() {
   const [error, setError] = useState<string | null>(null);
   
   const { toast } = useToast();
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) { // 2MB limit
+        toast({ variant: "destructive", title: "Logo Too Large", description: "Please upload a logo smaller than 2MB." });
+        setUserLogoDataUri(null);
+        if (logoInputRef.current) {
+          logoInputRef.current.value = ""; // Reset file input
+        }
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setUserLogoDataUri(reader.result as string);
+        toast({ title: "Logo Uploaded", description: `${file.name} is ready.` });
+      };
+      reader.onerror = () => {
+        toast({ variant: "destructive", title: "Logo Upload Failed", description: "Could not read the logo file." });
+        setUserLogoDataUri(null);
+      }
+      reader.readAsDataURL(file);
+    }
+  };
 
   const resetAllContent = () => {
     setUserNiche("");
     setUserCategory("");
     setUserImageDescription("");
-    setUserCompanyLogoDescription("");
+    setUserLogoDataUri(null);
+    if (logoInputRef.current) {
+        logoInputRef.current.value = "";
+    }
     setUserContactInfoDescription("");
     setUserSocialMediaDescription("");
     setUserEditInstruction("");
@@ -83,7 +112,7 @@ export default function InstaGeniusPage() {
         userNiche, 
         userCategory,
         userImageDescription: userImageDescription.trim() || undefined,
-        userCompanyLogoDescription: userCompanyLogoDescription.trim() || undefined,
+        userLogoDataUri: userLogoDataUri || undefined,
         userContactInfoDescription: userContactInfoDescription.trim() || undefined,
         userSocialMediaDescription: userSocialMediaDescription.trim() || undefined,
       });
@@ -97,8 +126,12 @@ export default function InstaGeniusPage() {
       if (detailsResult.imageGenerationPrompt) {
         setCurrentLoadingStep("Generating AI image (this may take a moment)...");
         try {
-          const imageResult = await generateImageFromPrompt({ prompt: detailsResult.imageGenerationPrompt });
-          setGeneratedImageDataUris(imageResult.imageDataUris); // This will be an array with one image
+          const imageGenInput: GenerateImageFromPromptInput = { prompt: detailsResult.imageGenerationPrompt };
+          if (detailsResult.logoDataUriForImageGen) {
+            imageGenInput.logoDataUri = detailsResult.logoDataUriForImageGen;
+          }
+          const imageResult = await generateImageFromPrompt(imageGenInput);
+          setGeneratedImageDataUris(imageResult.imageDataUris); 
           toast({ title: "Success!", description: `AI content and image generated.` });
         } catch (imgErr) {
           console.error("Failed to generate image:", imgErr);
@@ -135,11 +168,15 @@ export default function InstaGeniusPage() {
     try {
       setCurrentLoadingStep("Applying image edits...");
       const baseImageToEdit = generatedImageDataUris[0];
-      const imageResult = await generateImageFromPrompt({
+      const imageEditInput: GenerateImageFromPromptInput = {
         baseImageDataUri: baseImageToEdit,
         editInstruction: userEditInstruction,
-      });
-      setGeneratedImageDataUris(imageResult.imageDataUris); // This will be an array with one edited image
+      };
+      if (userLogoDataUri) { // Pass logo if available during edits too
+        imageEditInput.logoDataUri = userLogoDataUri;
+      }
+      const imageResult = await generateImageFromPrompt(imageEditInput);
+      setGeneratedImageDataUris(imageResult.imageDataUris); 
       toast({ title: "Success!", description: "Image edits applied. New image generated." });
       setUserEditInstruction(""); 
     } catch (err) {
@@ -200,7 +237,7 @@ export default function InstaGeniusPage() {
         <Card className="w-full max-w-3xl shadow-xl rounded-xl overflow-hidden mb-8">
           <CardHeader>
             <CardTitle className="flex items-center"><FileText className="mr-2 h-6 w-6 text-primary" /> Define Your Content Focus</CardTitle>
-            <CardDescription>Enter niche, category, and optionally describe your desired image and branding. AI will generate post ideas, captions, hashtags, and a unique image. You can then edit the image with text commands.</CardDescription>
+            <CardDescription>Enter niche, category, and optionally describe your image and branding. AI will generate content and an image. You can then edit the image.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 sm:p-10 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -255,51 +292,68 @@ export default function InstaGeniusPage() {
             </div>
             
             <div className="space-y-4">
-              <Label className="text-lg font-semibold text-foreground mb-2 block">
-                Branding & Contact (Optional - AI will try to incorporate these)
-              </Label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <div>
-                    <Label htmlFor="logo-description-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
-                        <Building className="h-4 w-4 mr-1 text-primary/80" /> Logo Ideas
+                <Label className="text-lg font-semibold text-foreground mb-2 block">
+                    Branding & Contact (Optional - AI will try to incorporate these)
+                </Label>
+                 <Alert variant="default" className="p-3">
+                    <Info className="h-5 w-5" />
+                    <AlertTitle className="text-sm font-medium">Experimental Feature</AlertTitle>
+                    <AlertDescription className="text-xs">
+                        AI attempts to incorporate logo/contact info ideas into the image design. Precise placement or rendering of an uploaded logo is challenging for current AI.
+                    </AlertDescription>
+                </Alert>
+
+                <div>
+                    <Label htmlFor="logo-upload-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                        <UploadCloud className="h-4 w-4 mr-1 text-primary/80" /> Upload Your Logo (Optional, &lt;2MB)
                     </Label>
                     <Input
-                        id="logo-description-input"
-                        value={userCompanyLogoDescription}
-                        onChange={(e) => setUserCompanyLogoDescription(e.target.value)}
-                        placeholder="e.g., Space for logo bottom-right"
-                        className="text-sm"
+                        id="logo-upload-input"
+                        ref={logoInputRef}
+                        type="file"
+                        accept="image/png, image/jpeg, image/webp, image/svg+xml"
+                        onChange={handleLogoUpload}
+                        className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                         disabled={isLoading || isEditingImage}
                     />
-                 </div>
-                 <div>
-                    <Label htmlFor="contact-info-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
-                        <Phone className="h-4 w-4 mr-1 text-primary/80" /> Contact Info Ideas
-                    </Label>
-                    <Input
-                        id="contact-info-input"
-                        value={userContactInfoDescription}
-                        onChange={(e) => setUserContactInfoDescription(e.target.value)}
-                        placeholder="e.g., Icons for phone/email at bottom"
-                         className="text-sm"
-                        disabled={isLoading || isEditingImage}
-                    />
-                 </div>
-                 <div>
-                    <Label htmlFor="social-media-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
-                        <Share2 className="h-4 w-4 mr-1 text-primary/80" /> Social Media Ideas
-                    </Label>
-                    <Input
-                        id="social-media-input"
-                        value={userSocialMediaDescription}
-                        onChange={(e) => setUserSocialMediaDescription(e.target.value)}
-                        placeholder="e.g., Space for IG handle"
-                         className="text-sm"
-                        disabled={isLoading || isEditingImage}
-                    />
-                 </div>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these elements in the image design. AI will generate a design compatible with these ideas or include stylized representations.</p>
+                    {userLogoDataUri && (
+                        <div className="mt-2 p-2 border rounded-md bg-muted/30 inline-flex items-center space-x-2">
+                            <NextImage src={userLogoDataUri} alt="Uploaded logo preview" width={40} height={40} className="object-contain rounded" />
+                            <span className="text-xs text-muted-foreground">Logo ready</span>
+                            <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => {setUserLogoDataUri(null); if(logoInputRef.current) logoInputRef.current.value = "";}}>Clear</Button>
+                        </div>
+                    )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <Label htmlFor="contact-info-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                            <Phone className="h-4 w-4 mr-1 text-primary/80" /> Contact Info Ideas (Text)
+                        </Label>
+                        <Input
+                            id="contact-info-input"
+                            value={userContactInfoDescription}
+                            onChange={(e) => setUserContactInfoDescription(e.target.value)}
+                            placeholder="e.g., Icons for phone/email at bottom"
+                            className="text-sm"
+                            disabled={isLoading || isEditingImage}
+                        />
+                    </div>
+                    <div>
+                        <Label htmlFor="social-media-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                            <Share2 className="h-4 w-4 mr-1 text-primary/80" /> Social Media Ideas (Text)
+                        </Label>
+                        <Input
+                            id="social-media-input"
+                            value={userSocialMediaDescription}
+                            onChange={(e) => setUserSocialMediaDescription(e.target.value)}
+                            placeholder="e.g., Space for IG handle"
+                            className="text-sm"
+                            disabled={isLoading || isEditingImage}
+                        />
+                    </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these text-based elements in the image design (e.g., stylized icons, placeholder areas). For the logo, upload it above and AI will attempt to integrate it.</p>
             </div>
             
             <div className="pt-2">
@@ -320,7 +374,7 @@ export default function InstaGeniusPage() {
                       variant="outline" 
                       onClick={resetAllContent} 
                       aria-label="Clear all inputs and generated content" 
-                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !hasGeneratedContent && !userEditInstruction}
+                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoDataUri && !hasGeneratedContent && !userEditInstruction}
                     >
                         Clear All
                     </Button>
@@ -357,13 +411,18 @@ export default function InstaGeniusPage() {
             </CardHeader>
             <CardContent className="p-6 sm:p-10 space-y-8">
               
-              {/* Generated Image Section */}
               {currentGeneratedImage && (
                 <div className="space-y-4">
                   <Label className="text-lg font-semibold text-foreground block flex items-center">
                     <ImageIcon className="h-5 w-5 mr-2 text-primary" /> AI Generated Image
                   </Label>
-                  <div className="w-full md:w-2/3 lg:w-1/2 mx-auto space-y-2"> {/* Centered and sized container */}
+                   <Alert variant="default" className="p-3">
+                        <Info className="h-5 w-5" />
+                        <AlertDescription className="text-xs">
+                            AI has attempted to incorporate your logo and branding ideas. Results can vary.
+                        </AlertDescription>
+                    </Alert>
+                  <div className="w-full md:w-2/3 lg:w-1/2 mx-auto space-y-2">
                       <div className="aspect-square border-2 border-dashed border-accent rounded-lg flex items-center justify-center bg-muted/30 overflow-hidden relative group">
                         <NextImage
                           src={currentGeneratedImage}
@@ -386,7 +445,6 @@ export default function InstaGeniusPage() {
                 </div>
               )}
 
-              {/* Image Editing Section (if image exists) */}
               {currentGeneratedImage && (
                  <div>
                     <Label htmlFor="edit-instruction-input" className="text-md font-semibold text-foreground mb-2 block flex items-center">
@@ -396,7 +454,7 @@ export default function InstaGeniusPage() {
                       id="edit-instruction-input"
                       value={userEditInstruction}
                       onChange={(e) => setUserEditInstruction(e.target.value)}
-                      placeholder="e.g., Change text color to blue, make background darker, add a small logo in the corner..."
+                      placeholder="e.g., Change text color to blue, make background darker, adjust logo position..."
                       rows={3}
                       className="focus:ring-accent focus:border-accent text-sm resize-none"
                       disabled={isEditingImage || isLoading}
@@ -419,7 +477,6 @@ export default function InstaGeniusPage() {
               
               {currentGeneratedImage && <Separator />}
 
-              {/* Text Details Section */}
               <div className="grid md:grid-cols-2 gap-8 items-start">
                 <div className="space-y-6">
                   {headlineText && (
@@ -507,3 +564,5 @@ export default function InstaGeniusPage() {
     </>
   );
 }
+
+    

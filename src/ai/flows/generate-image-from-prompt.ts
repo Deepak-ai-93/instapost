@@ -1,7 +1,7 @@
 
 'use server';
 /**
- * @fileOverview AI-powered image generator from a text prompt, with support for image editing.
+ * @fileOverview AI-powered image generator from a text prompt, with support for image editing and logo incorporation.
  * It generates a single image for initial creation or editing.
  *
  * - generateImageFromPrompt - A function that generates an image based on a textual prompt, or edits an existing image based on instructions.
@@ -13,16 +13,17 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateImageFromPromptInputSchema = z.object({
-  prompt: z.string().optional().describe('A detailed textual prompt to generate an image from (used for initial generation).'),
+  prompt: z.string().optional().describe('A detailed textual prompt to generate an image from (used for initial generation). This prompt should guide the overall image and instruct on how to incorporate the logo if one is provided.'),
   baseImageDataUri: z.string().optional().describe("The base image as a data URI to be edited. Expected format: 'data:image/png;base64,<encoded_data>'."),
-  editInstruction: z.string().optional().describe('Textual instruction on how to edit the base image (e.g., "change background to blue", "add a hat to the person").'),
+  editInstruction: z.string().optional().describe('Textual instruction on how to edit the base image (e.g., "change background to blue", "add a hat to the person"). This may also include instructions regarding an optional logo.'),
+  logoDataUri: z.string().optional().describe("Optional: The user's logo as a data URI to attempt to incorporate into the generated/edited image. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
 });
 export type GenerateImageFromPromptInput = z.infer<typeof GenerateImageFromPromptInputSchema>;
 
 const GenerateImageFromPromptOutputSchema = z.object({
   imageDataUris: z
     .array(z.string())
-    .length(1) // Ensures the array always contains exactly one image URI
+    .length(1) 
     .describe(
       "An array containing a single generated or edited image as a data URI, including MIME type and Base64 encoding. Expected format: 'data:image/png;base64,<encoded_data>'."
     ),
@@ -35,14 +36,15 @@ export async function generateImageFromPrompt(
   return generateImageFromPromptFlow(input);
 }
 
-const generateSingleImage = async (
-    prompt: string | Array<{text?: string; media?: {url: string}}>,
+const generateSingleImageWithOptionalLogo = async (
+    promptPayload: Array<{text?: string; media?: {url: string}}>,
     retryCount = 0
   ): Promise<string | null> => {
   try {
+    // console.log("Generating image with payload:", JSON.stringify(promptPayload, null, 2));
     const { media } = await ai.generate({
       model: 'googleai/gemini-2.0-flash-exp',
-      prompt: prompt,
+      prompt: promptPayload,
       config: {
         responseModalities: ['TEXT', 'IMAGE'],
         // safetySettings: [{ category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' }] 
@@ -51,12 +53,12 @@ const generateSingleImage = async (
     return media?.url || null;
   } catch (error) {
     console.error('Error generating single image:', error);
-    if (retryCount < 1) { // Retry once
+    if (retryCount < 1) { 
       console.log('Retrying image generation...');
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 sec before retry
-      return generateSingleImage(prompt, retryCount + 1);
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      return generateSingleImageWithOptionalLogo(promptPayload, retryCount + 1);
     }
-    return null; // Return null if generation fails after retries
+    return null; 
   }
 };
 
@@ -71,16 +73,22 @@ const generateImageFromPromptFlow = ai.defineFlow(
     const generatedUris: string[] = [];
     let imageUri: string | null = null;
 
+    const promptPayload: Array<{text?: string; media?: {url: string}}> = [];
+
+    // Add logo first if provided, so it's part of the context for the main image/edit
+    if (input.logoDataUri) {
+      promptPayload.push({ media: { url: input.logoDataUri } });
+    }
+
     if (input.baseImageDataUri && input.editInstruction) {
-      // Editing an existing image - generate one edited version
-      const editPromptPayload = [
-        { media: { url: input.baseImageDataUri } },
-        { text: input.editInstruction },
-      ];
-      imageUri = await generateSingleImage(editPromptPayload);
+      // Editing an existing image
+      promptPayload.push({ media: { url: input.baseImageDataUri } });
+      promptPayload.push({ text: input.editInstruction }); // Edit instruction should also guide logo placement if logoDataUri is present
+      imageUri = await generateSingleImageWithOptionalLogo(promptPayload);
     } else if (input.prompt) {
-      // Initial image generation - generate one image
-      imageUri = await generateSingleImage(input.prompt);
+      // Initial image generation
+      promptPayload.push({ text: input.prompt }); // Main prompt should guide logo placement if logoDataUri is present
+      imageUri = await generateSingleImageWithOptionalLogo(promptPayload);
     } else {
       throw new Error('Either a prompt for initial generation or a base image and edit instruction must be provided.');
     }
@@ -94,3 +102,5 @@ const generateImageFromPromptFlow = ai.defineFlow(
     return { imageDataUris: generatedUris };
   }
 );
+
+    
