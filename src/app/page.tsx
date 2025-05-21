@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, Share2, LinkIcon } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, LinkIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -23,7 +23,6 @@ export default function InstaGeniusPage() {
   const [userImageDescription, setUserImageDescription] = useState<string>("");
   const [userLogoImageUrl, setUserLogoImageUrl] = useState<string>("");
   const [userContactInfoDescription, setUserContactInfoDescription] = useState<string>("");
-  const [userSocialMediaDescription, setUserSocialMediaDescription] = useState<string>("");
   const [userEditInstruction, setUserEditInstruction] = useState<string>("");
   
   const [engagingCaption, setEngagingCaption] = useState<string>("");
@@ -47,7 +46,6 @@ export default function InstaGeniusPage() {
     setUserImageDescription("");
     setUserLogoImageUrl("");
     setUserContactInfoDescription("");
-    setUserSocialMediaDescription("");
     setUserEditInstruction("");
     setEngagingCaption("");
     setProfessionalCaption("");
@@ -86,7 +84,6 @@ export default function InstaGeniusPage() {
         userImageDescription: userImageDescription.trim() || undefined,
         userLogoImageUrl: userLogoImageUrl.trim() || undefined,
         userContactInfoDescription: userContactInfoDescription.trim() || undefined,
-        userSocialMediaDescription: userSocialMediaDescription.trim() || undefined,
       });
       setEngagingCaption(detailsResult.engagingCaption);
       setProfessionalCaption(detailsResult.professionalCaption);
@@ -307,19 +304,7 @@ export default function InstaGeniusPage() {
                             disabled={isLoading || isEditingImage}
                         />
                     </div>
-                    <div>
-                        <Label htmlFor="social-media-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
-                            <Share2 className="h-4 w-4 mr-1 text-primary/80" /> Social Media Ideas (Text)
-                        </Label>
-                        <Input
-                            id="social-media-input"
-                            value={userSocialMediaDescription}
-                            onChange={(e) => setUserSocialMediaDescription(e.target.value)}
-                            placeholder="e.g., Space for IG handle"
-                            className="text-sm"
-                            disabled={isLoading || isEditingImage}
-                        />
-                    </div>
+                    
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these text-based elements or the logo URL in the image design (e.g., stylized icons, placeholder areas, stylistic alignment).</p>
             </div>
@@ -342,7 +327,7 @@ export default function InstaGeniusPage() {
                       variant="outline" 
                       onClick={resetAllContent} 
                       aria-label="Clear all inputs and generated content" 
-                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoImageUrl && !userContactInfoDescription && !userSocialMediaDescription && !hasGeneratedContent && !userEditInstruction}
+                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoImageUrl && !userContactInfoDescription && !hasGeneratedContent && !userEditInstruction}
                     >
                         Clear All
                     </Button>
@@ -532,5 +517,3 @@ export default function InstaGeniusPage() {
     </>
   );
 }
-
-    
