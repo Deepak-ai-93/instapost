@@ -16,6 +16,9 @@ const GeneratePostDetailsInputSchema = z.object({
   userNiche: z.string().describe('The user-provided niche for the post.'),
   userCategory: z.string().describe('The user-provided category for the post.'),
   userImageDescription: z.string().optional().describe('Optional user-provided details about desired image elements, colors, text orientation, positions, etc. The AI will enhance and incorporate this.'),
+  userCompanyLogoDescription: z.string().optional().describe('Optional user-provided description for company logo placement or style (e.g., "leave space for logo in bottom-right", "a subtle circular motif top-left").'),
+  userContactInfoDescription: z.string().optional().describe('Optional user-provided description for contact information (e.g., "area for phone number and email at the bottom", "stylized icons for phone/email").'),
+  userSocialMediaDescription: z.string().optional().describe('Optional user-provided description for social media handles/icons (e.g., "generic social media icons at the footer", "space for Instagram handle").'),
 });
 export type GeneratePostDetailsInput = z.infer<typeof GeneratePostDetailsInputSchema>;
 
@@ -25,7 +28,7 @@ const GeneratePostDetailsOutputSchema = z.object({
   hashtags: z.string().describe('A comma-separated list of 3-5 relevant hashtags for the post in the niche and category. Each hashtag MUST start with "#" (e.g., #sustainability, #traveltips).'),
   suggestedPostTime: z.string().describe('A suggestion for the best time to post this content (e.g., "Weekdays 9-11 AM EST") for the niche and category.'),
   headlineText: z.string().describe('A short, bold, and engaging headline (3-7 words) for the image. This should be a powerful hook or concise benefit, highly relevant to the niche, category, and designed for maximum engagement. It should be suitable for direct use as text on the image.'),
-  imageGenerationPrompt: z.string().describe('The fully constructed image generation prompt, incorporating the user niche, category, generated headline, and enhanced user image description (if provided), built upon a universal template. This prompt should aim for non-stock, content-rich visuals, considering social media aspect ratios (like 1:1 square or 4:5 portrait) and potentially including the headline text directly in the image design.'),
+  imageGenerationPrompt: z.string().describe('The fully constructed image generation prompt, incorporating the user niche, category, generated headline, enhanced user image description, and branding considerations (logo, contact, social media), built upon a universal template. This prompt should aim for non-stock, content-rich visuals, considering social media aspect ratios (like 1:1 square or 4:5 portrait) and potentially including the headline text directly in the image design.'),
 });
 export type GeneratePostDetailsOutput = z.infer<typeof GeneratePostDetailsOutputSchema>;
 
@@ -46,6 +49,15 @@ User-provided Niche: "{{{userNiche}}}"
 User-provided Category: "{{{userCategory}}}"
 {{#if userImageDescription}}
 User-provided Image Description: "{{{userImageDescription}}}"
+{{/if}}
+{{#if userCompanyLogoDescription}}
+User-provided Company Logo Description: "{{{userCompanyLogoDescription}}}"
+{{/if}}
+{{#if userContactInfoDescription}}
+User-provided Contact Info Description: "{{{userContactInfoDescription}}}"
+{{/if}}
+{{#if userSocialMediaDescription}}
+User-provided Social Media Description: "{{{userSocialMediaDescription}}}"
 {{/if}}
 
 Based on this information, please generate the following:
@@ -79,8 +91,12 @@ Based on this information, please generate the following:
 
     *   Replace \\"{GENERATED_HEADLINE_TEXT}\\" with the \`headlineText\` you just generated (item 5).
     *   For the "[DETAILED_IMAGE_DESCRIPTION_AREA]" part:
-        *   If a \`userImageDescription\` ("{{{userImageDescription}}}") was provided by the user, you MUST expand upon it. Incorporate their specified elements, colors, text orientation, positions, and any other details. Enhance their description to make it richer, more vivid, and to ensure it forms a coherent and effective part of the overall image prompt. The goal is to create a unique, content-rich image that avoids generic stock photo appearances. Describe a scene or concept in detail with rich visual language, focusing on elements, colors, textures, lighting, and overall mood.
-        *   If NO \`userImageDescription\` was provided, use your creative expertise to describe relevant visual elements, specific objects, scenes, color palettes, art styles (e.g., photorealistic, illustrative, abstract, minimalist, vibrant, muted), lighting, and composition based on the "{{userNiche}}", "{{userCategory}}", and the generated \`headlineText\`. Aim for originality, visual appeal, and a content-rich design avoiding generic stock photo appearances. Describe a scene or concept in detail with rich visual language.
+        *   Start with a general description based on "{{userNiche}}", "{{userCategory}}", and the generated \`headlineText\`. Aim for originality, visual appeal, and a content-rich design avoiding generic stock photo appearances. Describe a scene or concept in detail with rich visual language, focusing on elements, colors, textures, lighting, and overall mood.
+        *   If a \`userImageDescription\` ("{{{userImageDescription}}}") was provided, you MUST expand upon it. Incorporate their specified elements, colors, text orientation, positions, and any other details. Enhance their description to make it richer, more vivid, and ensure it forms a coherent and effective part of the overall image prompt.
+        *   {{#if userCompanyLogoDescription}}Incorporate the user's company logo description: "{{{userCompanyLogoDescription}}}". For example, if they want space for a logo, describe how the design should accommodate this (e.g., "The bottom-left corner should have a clean, uncluttered area suitable for placing a logo."). If they describe a logo style, suggest incorporating that style or motif into the image.{{/if}}
+        *   {{#if userContactInfoDescription}}Incorporate the user's contact info description: "{{{userContactInfoDescription}}}". For example, suggest "subtle, stylized icons representing a phone and email at the bottom" or "a designated area at the lower edge for contact details."{{/if}}
+        *   {{#if userSocialMediaDescription}}Incorporate the user's social media description: "{{{userSocialMediaDescription}}}". For example, suggest "minimalist icons for common social media platforms like Instagram and Facebook near the footer" or "a clean strip at the bottom suitable for social media handles."{{/if}}
+        *   Combine all these aspects into a single, coherent paragraph for the "[DETAILED_IMAGE_DESCRIPTION_AREA]". Ensure this area focuses on visual descriptions and not just listing features.
 
 Ensure your output strictly adheres to the defined output schema for all fields. The final \`imageGenerationPrompt\` should be a single, complete string.
 `,
@@ -100,4 +116,3 @@ const generatePostDetailsFlow = ai.defineFlow(
     return output; 
   }
 );
-

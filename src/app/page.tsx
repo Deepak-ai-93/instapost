@@ -13,13 +13,16 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, Share2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
 export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
   const [userImageDescription, setUserImageDescription] = useState<string>("");
+  const [userCompanyLogoDescription, setUserCompanyLogoDescription] = useState<string>("");
+  const [userContactInfoDescription, setUserContactInfoDescription] = useState<string>("");
+  const [userSocialMediaDescription, setUserSocialMediaDescription] = useState<string>("");
   const [userEditInstruction, setUserEditInstruction] = useState<string>("");
   
   const [engagingCaption, setEngagingCaption] = useState<string>("");
@@ -41,6 +44,9 @@ export default function InstaGeniusPage() {
     setUserNiche("");
     setUserCategory("");
     setUserImageDescription("");
+    setUserCompanyLogoDescription("");
+    setUserContactInfoDescription("");
+    setUserSocialMediaDescription("");
     setUserEditInstruction("");
     setEngagingCaption("");
     setProfessionalCaption("");
@@ -76,7 +82,10 @@ export default function InstaGeniusPage() {
       const detailsResult = await generatePostDetails({ 
         userNiche, 
         userCategory,
-        userImageDescription: userImageDescription.trim() || undefined
+        userImageDescription: userImageDescription.trim() || undefined,
+        userCompanyLogoDescription: userCompanyLogoDescription.trim() || undefined,
+        userContactInfoDescription: userContactInfoDescription.trim() || undefined,
+        userSocialMediaDescription: userSocialMediaDescription.trim() || undefined,
       });
       setEngagingCaption(detailsResult.engagingCaption);
       setProfessionalCaption(detailsResult.professionalCaption);
@@ -191,20 +200,20 @@ export default function InstaGeniusPage() {
         <Card className="w-full max-w-3xl shadow-xl rounded-xl overflow-hidden mb-8">
           <CardHeader>
             <CardTitle className="flex items-center"><FileText className="mr-2 h-6 w-6 text-primary" /> Define Your Content Focus</CardTitle>
-            <CardDescription>Enter niche, category, and optionally describe your desired image. AI will generate post ideas, captions, hashtags, and a unique image. You can then edit the image with text commands.</CardDescription>
+            <CardDescription>Enter niche, category, and optionally describe your desired image and branding. AI will generate post ideas, captions, hashtags, and a unique image. You can then edit the image with text commands.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 sm:p-10 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <Label htmlFor="niche-input" className="text-lg font-semibold text-foreground mb-2 block">
-                  1. Specify Niche*
+                  Niche*
                 </Label>
                 <Input
                   id="niche-input"
                   type="text"
                   value={userNiche}
                   onChange={(e) => setUserNiche(e.target.value)}
-                  placeholder="e.g., Sustainable Travel, Gourmet Coffee"
+                  placeholder="e.g., Sustainable Travel"
                   className="focus:ring-accent focus:border-accent text-base"
                   required
                   disabled={isLoading || isEditingImage}
@@ -213,14 +222,14 @@ export default function InstaGeniusPage() {
               </div>
               <div>
                 <Label htmlFor="category-input" className="text-lg font-semibold text-foreground mb-2 block">
-                  2. Specify Category*
+                  Category*
                 </Label>
                 <Input
                   id="category-input"
                   type="text"
                   value={userCategory}
                   onChange={(e) => setUserCategory(e.target.value)}
-                  placeholder="e.g., Eco-tourism, Food & Drink"
+                  placeholder="e.g., Eco-tourism Tips"
                   className="focus:ring-accent focus:border-accent text-base"
                   required
                   disabled={isLoading || isEditingImage}
@@ -230,8 +239,8 @@ export default function InstaGeniusPage() {
             </div>
 
             <div>
-                <Label htmlFor="image-description-input" className="text-lg font-semibold text-foreground mb-2 block">
-                  3. Describe Desired Image (Optional)
+                <Label htmlFor="image-description-input" className="text-lg font-semibold text-foreground mb-2 block flex items-center">
+                  <ImageIcon className="h-5 w-5 mr-2 text-primary" /> Describe Desired Image (Optional)
                 </Label>
                 <Textarea
                   id="image-description-input"
@@ -242,13 +251,58 @@ export default function InstaGeniusPage() {
                   className="focus:ring-accent focus:border-accent text-base resize-none"
                   disabled={isLoading || isEditingImage}
                 />
-                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position, overall aesthetic. AI will enhance this for initial generation.</p>
+                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position, overall aesthetic. AI will enhance this.</p>
+            </div>
+            
+            <div className="space-y-4">
+              <Label className="text-lg font-semibold text-foreground mb-2 block">
+                Branding & Contact (Optional - AI will try to incorporate these)
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div>
+                    <Label htmlFor="logo-description-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                        <Building className="h-4 w-4 mr-1 text-primary/80" /> Logo Ideas
+                    </Label>
+                    <Input
+                        id="logo-description-input"
+                        value={userCompanyLogoDescription}
+                        onChange={(e) => setUserCompanyLogoDescription(e.target.value)}
+                        placeholder="e.g., Space for logo bottom-right"
+                        className="text-sm"
+                        disabled={isLoading || isEditingImage}
+                    />
+                 </div>
+                 <div>
+                    <Label htmlFor="contact-info-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                        <Phone className="h-4 w-4 mr-1 text-primary/80" /> Contact Info Ideas
+                    </Label>
+                    <Input
+                        id="contact-info-input"
+                        value={userContactInfoDescription}
+                        onChange={(e) => setUserContactInfoDescription(e.target.value)}
+                        placeholder="e.g., Icons for phone/email at bottom"
+                         className="text-sm"
+                        disabled={isLoading || isEditingImage}
+                    />
+                 </div>
+                 <div>
+                    <Label htmlFor="social-media-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                        <Share2 className="h-4 w-4 mr-1 text-primary/80" /> Social Media Ideas
+                    </Label>
+                    <Input
+                        id="social-media-input"
+                        value={userSocialMediaDescription}
+                        onChange={(e) => setUserSocialMediaDescription(e.target.value)}
+                        placeholder="e.g., Space for IG handle"
+                         className="text-sm"
+                        disabled={isLoading || isEditingImage}
+                    />
+                 </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these elements in the image design. AI will generate a design compatible with these ideas or include stylized representations.</p>
             </div>
             
             <div className="pt-2">
-                <Label className="text-lg font-semibold text-foreground mb-2 block">
-                    4. Generate Content & Image
-                </Label>
                 <div className="flex space-x-2">
                     <Button
                         onClick={handleGenerateContent}
