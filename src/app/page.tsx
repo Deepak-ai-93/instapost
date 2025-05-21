@@ -236,12 +236,12 @@ export default function InstaGeniusPage() {
                   id="image-description-input"
                   value={userImageDescription}
                   onChange={(e) => setUserImageDescription(e.target.value)}
-                  placeholder="e.g., A vintage map background, passport stamps scattered, vibrant teal and orange colors, text 'Adventure Awaits' in bold script font at the top."
+                  placeholder="e.g., Modern design, sleek, minimalist aesthetic. A vintage map background with passport stamps, vibrant teal and orange colors. Text 'Adventure Awaits' in bold script font at the top center. Photorealistic style."
                   rows={3}
                   className="focus:ring-accent focus:border-accent text-base resize-none"
                   disabled={isLoading || isEditingImage}
                 />
-                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position. AI will enhance this for initial generation.</p>
+                <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position, overall aesthetic (e.g., modern, vintage, abstract). AI will enhance this for initial generation.</p>
             </div>
             
             <div className="pt-2">
