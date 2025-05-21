@@ -13,10 +13,10 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const GenerateImageFromPromptInputSchema = z.object({
-  prompt: z.string().optional().describe('A detailed textual prompt to generate an image from (used for initial generation). This prompt should guide the overall image and instruct on how to incorporate the logo if one is provided.'),
+  prompt: z.string().optional().describe('A detailed textual prompt to generate an image from (used for initial generation). This prompt should guide the overall image and instruct on how to incorporate the logo if one is provided via URL.'),
   baseImageDataUri: z.string().optional().describe("The base image as a data URI to be edited. Expected format: 'data:image/png;base64,<encoded_data>'."),
-  editInstruction: z.string().optional().describe('Textual instruction on how to edit the base image (e.g., "change background to blue", "add a hat to the person"). This may also include instructions regarding an optional logo.'),
-  logoDataUri: z.string().optional().describe("Optional: The user's logo as a data URI to attempt to incorporate into the generated/edited image. Expected format: 'data:<mimetype>;base64,<encoded_data>'."),
+  editInstruction: z.string().optional().describe('Textual instruction on how to edit the base image (e.g., "change background to blue", "add a hat to the person"). This may also include instructions regarding an optional logo URL.'),
+  logoImageUrl: z.string().optional().describe("Optional: The user's logo as a public image URL to attempt to incorporate into the generated/edited image."),
 });
 export type GenerateImageFromPromptInput = z.infer<typeof GenerateImageFromPromptInputSchema>;
 
@@ -75,19 +75,28 @@ const generateImageFromPromptFlow = ai.defineFlow(
 
     const promptPayload: Array<{text?: string; media?: {url: string}}> = [];
 
-    // Add logo first if provided, so it's part of the context for the main image/edit
-    if (input.logoDataUri) {
-      promptPayload.push({ media: { url: input.logoDataUri } });
+    // Add logo URL first if provided, so it's part of the context for the main image/edit
+    if (input.logoImageUrl) {
+      // Basic validation for URL structure
+      try {
+        new URL(input.logoImageUrl); // Check if it's a valid URL format
+        promptPayload.push({ media: { url: input.logoImageUrl } });
+      } catch (e) {
+        console.warn("Invalid logoImageUrl provided, skipping:", input.logoImageUrl, e);
+        // Optionally, we could throw an error or notify the user
+      }
     }
 
     if (input.baseImageDataUri && input.editInstruction) {
       // Editing an existing image
       promptPayload.push({ media: { url: input.baseImageDataUri } });
-      promptPayload.push({ text: input.editInstruction }); // Edit instruction should also guide logo placement if logoDataUri is present
+      promptPayload.push({ text: input.editInstruction }); // Edit instruction should also guide logo placement if logoImageUrl is present
       imageUri = await generateSingleImageWithOptionalLogo(promptPayload);
     } else if (input.prompt) {
       // Initial image generation
-      promptPayload.push({ text: input.prompt }); // Main prompt should guide logo placement if logoDataUri is present
+      // The main textual prompt already has instructions on how to handle the logo URL.
+      // The logoImageUrl (if any) is already added to promptPayload above.
+      promptPayload.push({ text: input.prompt }); 
       imageUri = await generateSingleImageWithOptionalLogo(promptPayload);
     } else {
       throw new Error('Either a prompt for initial generation or a base image and edit instruction must be provided.');

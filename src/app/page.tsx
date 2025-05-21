@@ -13,7 +13,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, Share2, UploadCloud } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, Share2, LinkIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -21,7 +21,7 @@ export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
   const [userImageDescription, setUserImageDescription] = useState<string>("");
-  const [userLogoDataUri, setUserLogoDataUri] = useState<string | null>(null);
+  const [userLogoImageUrl, setUserLogoImageUrl] = useState<string>("");
   const [userContactInfoDescription, setUserContactInfoDescription] = useState<string>("");
   const [userSocialMediaDescription, setUserSocialMediaDescription] = useState<string>("");
   const [userEditInstruction, setUserEditInstruction] = useState<string>("");
@@ -40,40 +40,12 @@ export default function InstaGeniusPage() {
   const [error, setError] = useState<string | null>(null);
   
   const { toast } = useToast();
-  const logoInputRef = useRef<HTMLInputElement>(null);
-
-  const handleLogoUpload = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (file.size > 2 * 1024 * 1024) { // 2MB limit
-        toast({ variant: "destructive", title: "Logo Too Large", description: "Please upload a logo smaller than 2MB." });
-        setUserLogoDataUri(null);
-        if (logoInputRef.current) {
-          logoInputRef.current.value = ""; // Reset file input
-        }
-        return;
-      }
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUserLogoDataUri(reader.result as string);
-        toast({ title: "Logo Uploaded", description: `${file.name} is ready.` });
-      };
-      reader.onerror = () => {
-        toast({ variant: "destructive", title: "Logo Upload Failed", description: "Could not read the logo file." });
-        setUserLogoDataUri(null);
-      }
-      reader.readAsDataURL(file);
-    }
-  };
 
   const resetAllContent = () => {
     setUserNiche("");
     setUserCategory("");
     setUserImageDescription("");
-    setUserLogoDataUri(null);
-    if (logoInputRef.current) {
-        logoInputRef.current.value = "";
-    }
+    setUserLogoImageUrl("");
     setUserContactInfoDescription("");
     setUserSocialMediaDescription("");
     setUserEditInstruction("");
@@ -112,7 +84,7 @@ export default function InstaGeniusPage() {
         userNiche, 
         userCategory,
         userImageDescription: userImageDescription.trim() || undefined,
-        userLogoDataUri: userLogoDataUri || undefined,
+        userLogoImageUrl: userLogoImageUrl.trim() || undefined,
         userContactInfoDescription: userContactInfoDescription.trim() || undefined,
         userSocialMediaDescription: userSocialMediaDescription.trim() || undefined,
       });
@@ -127,8 +99,8 @@ export default function InstaGeniusPage() {
         setCurrentLoadingStep("Generating AI image (this may take a moment)...");
         try {
           const imageGenInput: GenerateImageFromPromptInput = { prompt: detailsResult.imageGenerationPrompt };
-          if (detailsResult.logoDataUriForImageGen) {
-            imageGenInput.logoDataUri = detailsResult.logoDataUriForImageGen;
+          if (detailsResult.logoImageUrlForImageGen) {
+            imageGenInput.logoImageUrl = detailsResult.logoImageUrlForImageGen;
           }
           const imageResult = await generateImageFromPrompt(imageGenInput);
           setGeneratedImageDataUris(imageResult.imageDataUris); 
@@ -172,8 +144,8 @@ export default function InstaGeniusPage() {
         baseImageDataUri: baseImageToEdit,
         editInstruction: userEditInstruction,
       };
-      if (userLogoDataUri) { // Pass logo if available during edits too
-        imageEditInput.logoDataUri = userLogoDataUri;
+      if (userLogoImageUrl.trim()) { 
+        imageEditInput.logoImageUrl = userLogoImageUrl.trim();
       }
       const imageResult = await generateImageFromPrompt(imageEditInput);
       setGeneratedImageDataUris(imageResult.imageDataUris); 
@@ -299,29 +271,25 @@ export default function InstaGeniusPage() {
                     <Info className="h-5 w-5" />
                     <AlertTitle className="text-sm font-medium">Experimental Feature</AlertTitle>
                     <AlertDescription className="text-xs">
-                        AI attempts to incorporate logo/contact info ideas into the image design. Precise placement or rendering of an uploaded logo is challenging for current AI.
+                        AI attempts to incorporate logo/contact info ideas into the image design. Referencing external logo URLs for direct inclusion by AI can be unreliable.
                     </AlertDescription>
                 </Alert>
 
                 <div>
-                    <Label htmlFor="logo-upload-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
-                        <UploadCloud className="h-4 w-4 mr-1 text-primary/80" /> Upload Your Logo (Optional, &lt;2MB)
+                    <Label htmlFor="logo-url-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                        <LinkIcon className="h-4 w-4 mr-1 text-primary/80" /> Logo Image URL (Optional)
                     </Label>
                     <Input
-                        id="logo-upload-input"
-                        ref={logoInputRef}
-                        type="file"
-                        accept="image/png, image/jpeg, image/webp, image/svg+xml"
-                        onChange={handleLogoUpload}
-                        className="text-sm file:mr-2 file:py-1 file:px-2 file:rounded-full file:border-0 file:text-xs file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
+                        id="logo-url-input"
+                        type="url"
+                        value={userLogoImageUrl}
+                        onChange={(e) => setUserLogoImageUrl(e.target.value)}
+                        placeholder="https://example.com/your-logo.png"
+                        className="text-sm"
                         disabled={isLoading || isEditingImage}
                     />
-                    {userLogoDataUri && (
-                        <div className="mt-2 p-2 border rounded-md bg-muted/30 inline-flex items-center space-x-2">
-                            <NextImage src={userLogoDataUri} alt="Uploaded logo preview" width={40} height={40} className="object-contain rounded" />
-                            <span className="text-xs text-muted-foreground">Logo ready</span>
-                            <Button variant="ghost" size="sm" className="text-xs h-auto p-1" onClick={() => {setUserLogoDataUri(null); if(logoInputRef.current) logoInputRef.current.value = "";}}>Clear</Button>
-                        </div>
+                     {userLogoImageUrl && (
+                        <p className="text-xs text-muted-foreground mt-1">AI will attempt to reference this logo URL.</p>
                     )}
                 </div>
 
@@ -353,7 +321,7 @@ export default function InstaGeniusPage() {
                         />
                     </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these text-based elements in the image design (e.g., stylized icons, placeholder areas). For the logo, upload it above and AI will attempt to integrate it.</p>
+                <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these text-based elements or the logo URL in the image design (e.g., stylized icons, placeholder areas, stylistic alignment).</p>
             </div>
             
             <div className="pt-2">
@@ -374,7 +342,7 @@ export default function InstaGeniusPage() {
                       variant="outline" 
                       onClick={resetAllContent} 
                       aria-label="Clear all inputs and generated content" 
-                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoDataUri && !hasGeneratedContent && !userEditInstruction}
+                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoImageUrl && !userContactInfoDescription && !userSocialMediaDescription && !hasGeneratedContent && !userEditInstruction}
                     >
                         Clear All
                     </Button>
@@ -419,7 +387,7 @@ export default function InstaGeniusPage() {
                    <Alert variant="default" className="p-3">
                         <Info className="h-5 w-5" />
                         <AlertDescription className="text-xs">
-                            AI has attempted to incorporate your logo and branding ideas. Results can vary.
+                            AI has attempted to incorporate your branding ideas. Referencing external logo URLs for direct inclusion by AI can be unreliable. Results can vary.
                         </AlertDescription>
                     </Alert>
                   <div className="w-full md:w-2/3 lg:w-1/2 mx-auto space-y-2">
