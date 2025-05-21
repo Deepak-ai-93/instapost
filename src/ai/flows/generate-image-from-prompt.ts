@@ -2,7 +2,7 @@
 'use server';
 /**
  * @fileOverview AI-powered image generator from a text prompt, with support for image editing.
- * It can generate multiple variations for initial image creation.
+ * It generates a single image for initial creation or editing.
  *
  * - generateImageFromPrompt - A function that generates an image based on a textual prompt, or edits an existing image based on instructions.
  * - GenerateImageFromPromptInput - The input type for the generateImageFromPrompt function.
@@ -22,8 +22,9 @@ export type GenerateImageFromPromptInput = z.infer<typeof GenerateImageFromPromp
 const GenerateImageFromPromptOutputSchema = z.object({
   imageDataUris: z
     .array(z.string())
+    .length(1) // Ensures the array always contains exactly one image URI
     .describe(
-      "An array of generated or edited images as data URIs, each including MIME type and Base64 encoding. Expected format: 'data:image/png;base64,<encoded_data>'."
+      "An array containing a single generated or edited image as a data URI, including MIME type and Base64 encoding. Expected format: 'data:image/png;base64,<encoded_data>'."
     ),
 });
 export type GenerateImageFromPromptOutput = z.infer<typeof GenerateImageFromPromptOutputSchema>;
@@ -68,6 +69,7 @@ const generateImageFromPromptFlow = ai.defineFlow(
   },
   async (input: GenerateImageFromPromptInput) => {
     const generatedUris: string[] = [];
+    let imageUri: string | null = null;
 
     if (input.baseImageDataUri && input.editInstruction) {
       // Editing an existing image - generate one edited version
@@ -75,36 +77,20 @@ const generateImageFromPromptFlow = ai.defineFlow(
         { media: { url: input.baseImageDataUri } },
         { text: input.editInstruction },
       ];
-      const editedImageUri = await generateSingleImage(editPromptPayload);
-      if (editedImageUri) {
-        generatedUris.push(editedImageUri);
-      }
+      imageUri = await generateSingleImage(editPromptPayload);
     } else if (input.prompt) {
-      // Initial image generation - generate three variations
-      const basePrompt = input.prompt;
-      const variationSuffixes = [
-        "", // Original
-        " Variation: Apply a contrasting color palette.", // Variation 1
-        " Variation: Experiment with a different compositional layout and dynamic angles.", // Variation 2
-      ];
-
-      for (const suffix of variationSuffixes) {
-        const fullPrompt = basePrompt + suffix;
-        const imageUri = await generateSingleImage(fullPrompt);
-        if (imageUri) {
-          generatedUris.push(imageUri);
-        }
-      }
+      // Initial image generation - generate one image
+      imageUri = await generateSingleImage(input.prompt);
     } else {
       throw new Error('Either a prompt for initial generation or a base image and edit instruction must be provided.');
     }
 
-    if (generatedUris.length === 0) {
-      throw new Error('Image generation/editing failed to produce any images.');
+    if (imageUri) {
+      generatedUris.push(imageUri);
+    } else {
+       throw new Error('Image generation/editing failed to produce an image.');
     }
     
     return { imageDataUris: generatedUris };
   }
 );
-
-    
