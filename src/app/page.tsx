@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Toaster } from "@/components/ui/toaster";
+// import { Toaster } from "@/components/ui/toaster"; // Toaster is in RootLayout
 import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, LinkIcon } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,7 +21,7 @@ export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
   const [userImageDescription, setUserImageDescription] = useState<string>("");
-  const [userLogoImageUrl, setUserLogoImageUrl] = useState<string>("");
+  const [userLogoImageUrl, setUserLogoImageUrl] = useState<string>(""); // Changed from DataUri to ImageUrl
   const [userContactInfoDescription, setUserContactInfoDescription] = useState<string>("");
   const [userEditInstruction, setUserEditInstruction] = useState<string>("");
   
@@ -44,7 +44,7 @@ export default function InstaGeniusPage() {
     setUserNiche("");
     setUserCategory("");
     setUserImageDescription("");
-    setUserLogoImageUrl("");
+    setUserLogoImageUrl(""); // Resetting image URL
     setUserContactInfoDescription("");
     setUserEditInstruction("");
     setEngagingCaption("");
@@ -82,7 +82,7 @@ export default function InstaGeniusPage() {
         userNiche, 
         userCategory,
         userImageDescription: userImageDescription.trim() || undefined,
-        userLogoImageUrl: userLogoImageUrl.trim() || undefined,
+        userLogoImageUrl: userLogoImageUrl.trim() || undefined, // Passing URL
         userContactInfoDescription: userContactInfoDescription.trim() || undefined,
       });
       setEngagingCaption(detailsResult.engagingCaption);
@@ -96,7 +96,7 @@ export default function InstaGeniusPage() {
         setCurrentLoadingStep("Generating AI image (this may take a moment)...");
         try {
           const imageGenInput: GenerateImageFromPromptInput = { prompt: detailsResult.imageGenerationPrompt };
-          if (detailsResult.logoImageUrlForImageGen) {
+          if (detailsResult.logoImageUrlForImageGen) { // Check for logo URL from details
             imageGenInput.logoImageUrl = detailsResult.logoImageUrlForImageGen;
           }
           const imageResult = await generateImageFromPrompt(imageGenInput);
@@ -142,7 +142,7 @@ export default function InstaGeniusPage() {
         editInstruction: userEditInstruction,
       };
       if (userLogoImageUrl.trim()) { 
-        imageEditInput.logoImageUrl = userLogoImageUrl.trim();
+        imageEditInput.logoImageUrl = userLogoImageUrl.trim(); // Pass logo URL for edits too
       }
       const imageResult = await generateImageFromPrompt(imageEditInput);
       setGeneratedImageDataUris(imageResult.imageDataUris); 
@@ -192,8 +192,8 @@ export default function InstaGeniusPage() {
 
   return (
     <>
-      <main className="container mx-auto px-4 py-8 flex flex-col items-center min-h-screen bg-background">
-        <header className="mb-10 text-center">
+      <div className="flex flex-col items-center min-h-screen bg-background py-0">
+        <header className="mb-10 text-center w-full">
           <div className="flex items-center justify-center mb-2">
             <Wand2 className="h-10 w-10 text-primary mr-3" />
             <h1 className="text-5xl font-bold text-primary">InstaGenius Pro</h1>
@@ -290,21 +290,18 @@ export default function InstaGeniusPage() {
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <Label htmlFor="contact-info-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
-                            <Phone className="h-4 w-4 mr-1 text-primary/80" /> Contact Info Ideas (Text)
-                        </Label>
-                        <Input
-                            id="contact-info-input"
-                            value={userContactInfoDescription}
-                            onChange={(e) => setUserContactInfoDescription(e.target.value)}
-                            placeholder="e.g., Icons for phone/email at bottom"
-                            className="text-sm"
-                            disabled={isLoading || isEditingImage}
-                        />
-                    </div>
-                    
+                <div>
+                    <Label htmlFor="contact-info-input" className="text-sm font-medium text-foreground mb-1 block flex items-center">
+                        <Phone className="h-4 w-4 mr-1 text-primary/80" /> Contact Info Ideas (Text)
+                    </Label>
+                    <Input
+                        id="contact-info-input"
+                        value={userContactInfoDescription}
+                        onChange={(e) => setUserContactInfoDescription(e.target.value)}
+                        placeholder="e.g., Icons for phone/email at bottom"
+                        className="text-sm"
+                        disabled={isLoading || isEditingImage}
+                    />
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">Describe how AI should consider these text-based elements or the logo URL in the image design (e.g., stylized icons, placeholder areas, stylistic alignment).</p>
             </div>
@@ -512,8 +509,8 @@ export default function InstaGeniusPage() {
           <p>&copy; {new Date().getFullYear()} InstaGenius Pro. All rights reserved.</p>
           <p>Powered by AI magic ✨</p>
         </footer>
-      </main>
-      <Toaster />
+      </div>
+      {/* <Toaster />  Toaster is now in RootLayout */}
     </>
   );
 }
