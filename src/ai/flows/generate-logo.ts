@@ -36,7 +36,8 @@ export async function generateLogo(
 const logoSystemPrompt = ai.definePrompt({
   name: 'generateLogoPrompt',
   input: {schema: GenerateLogoInputSchema},
-  output: {schema: z.object({}) }, // Output here is just for structure, actual image comes from model capability
+  // REMOVED: output: {schema: z.object({}) }, // This was causing the error.
+                                             // The primary output is the image from ai.generate's media field.
   prompt: `You are an expert logo designer. Generate a professional and iconic logo based on the following details:
 Niche: "{{niche}}"
 {{#if companyName}}Company Name: "{{companyName}}" (Attempt to incorporate this text stylishly if appropriate for the design).{{/if}}
@@ -62,9 +63,12 @@ const generateLogoFlow = ai.defineFlow(
     outputSchema: GenerateLogoOutputSchema,
   },
   async (input: GenerateLogoInput) => {
+    // Construct the prompt string using the logoSystemPrompt
+    const resolvedPrompt = await logoSystemPrompt(input);
+
     const { media } = await ai.generate({
       model: 'googleai/gemini-2.0-flash-exp', // This model can generate images
-      prompt: await logoSystemPrompt(input), // Pass the structured prompt
+      prompt: resolvedPrompt, // Pass the resolved prompt string/object
       config: {
         responseModalities: ['TEXT', 'IMAGE'], // Expecting an image
         // safetySettings: [{ category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' }]
@@ -78,3 +82,4 @@ const generateLogoFlow = ai.defineFlow(
     return { logoImageDataUri: media.url };
   }
 );
+
