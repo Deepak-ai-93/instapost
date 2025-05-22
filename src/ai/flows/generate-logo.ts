@@ -33,11 +33,13 @@ export async function generateLogo(
   return generateLogoFlow(input);
 }
 
-const logoSystemPrompt = ai.definePrompt({
-  name: 'generateLogoPrompt',
+// This prompt is now fully configured for image generation
+const configuredLogoGenerationPrompt = ai.definePrompt({
+  name: 'configuredLogoGenerationPrompt',
+  model: 'googleai/gemini-2.0-flash-exp', // Specify the image generation model
   input: {schema: GenerateLogoInputSchema},
-  // REMOVED: output: {schema: z.object({}) }, // This was causing the error.
-                                             // The primary output is the image from ai.generate's media field.
+  // No explicit output text schema needed if the primary goal is the image.
+  // The model might still return text, but we're focused on response.media.
   prompt: `You are an expert logo designer. Generate a professional and iconic logo based on the following details:
 Niche: "{{niche}}"
 {{#if companyName}}Company Name: "{{companyName}}" (Attempt to incorporate this text stylishly if appropriate for the design).{{/if}}
@@ -54,6 +56,10 @@ Key Design Guidelines:
 - Uniqueness: Aim for an original design, not a generic template.
 - Output: The final output should be ONLY the logo image itself, perfectly centered, and adhering to the 1:1 aspect ratio. Do not add any extra text, annotations, or background elements beyond the logo itself and its specified background.
 `,
+  config: {
+    responseModalities: ['TEXT', 'IMAGE'], // Gemini 2.0 flash exp needs TEXT even if image is primary.
+    // safetySettings: [{ category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' }]
+  },
 });
 
 const generateLogoFlow = ai.defineFlow(
@@ -63,23 +69,25 @@ const generateLogoFlow = ai.defineFlow(
     outputSchema: GenerateLogoOutputSchema,
   },
   async (input: GenerateLogoInput) => {
-    // Construct the prompt string using the logoSystemPrompt
-    const resolvedPrompt = await logoSystemPrompt(input);
+    // Execute the fully configured prompt that handles image generation
+    const response = await configuredLogoGenerationPrompt(input);
 
-    const { media } = await ai.generate({
-      model: 'googleai/gemini-2.0-flash-exp', // This model can generate images
-      prompt: resolvedPrompt, // Pass the resolved prompt string/object
-      config: {
-        responseModalities: ['TEXT', 'IMAGE'], // Expecting an image
-        // safetySettings: [{ category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' }]
-      },
-    });
+    // Extract media URL more robustly, checking candidates as Gemini might place it there
+    let mediaUrl = response.media?.url; 
+    if (!mediaUrl && response.candidates?.[0]?.message?.content) {
+      for (const part of response.candidates[0].message.content) {
+        if (part.media?.url) {
+          mediaUrl = part.media.url;
+          break;
+        }
+      }
+    }
 
-    if (!media?.url) {
-      throw new Error('AI failed to generate a logo image.');
+    if (!mediaUrl) {
+      console.error('Logo generation response details:', JSON.stringify(response, null, 2));
+      throw new Error('AI failed to generate a logo image. No media URL found in response.');
     }
     
-    return { logoImageDataUri: media.url };
+    return { logoImageDataUri: mediaUrl };
   }
 );
-
