@@ -15,7 +15,7 @@ import {z} from 'genkit';
 const GeneratePostDetailsInputSchema = z.object({
   userNiche: z.string().describe('The user-provided niche for the post.'),
   userCategory: z.string().describe('The user-provided category for the post.'),
-  userImageDescription: z.string().optional().describe('Optional user-provided details about desired image elements, colors, text orientation, positions, etc. The AI will enhance and incorporate this.'),
+  userImageDescription: z.string().optional().describe('Optional user-provided details about desired image elements, colors, text orientation, positions, font styles for text on image, overall visual style, etc. The AI will enhance and incorporate this.'),
   userLogoImageUrl: z.string().optional().describe("Optional: The user's logo as a public image URL."),
   userContactInfoDescription: z.string().optional().describe('Optional user-provided description for contact information (e.g., "area for phone number and email at the bottom", "stylized icons for phone/email").'),
 });
@@ -27,7 +27,7 @@ const GeneratePostDetailsOutputSchema = z.object({
   hashtags: z.string().describe('A comma-separated list of 3-5 relevant hashtags for the post in the niche and category. Each hashtag MUST start with "#" (e.g., #sustainability, #traveltips).'),
   suggestedPostTime: z.string().describe('A suggestion for the best time to post this content (e.g., "Weekdays 9-11 AM EST") for the niche and category.'),
   headlineText: z.string().describe('A short, bold, and engaging headline (3-7 words) for the image. This should be a powerful hook or concise benefit, highly relevant to the niche, category, and designed for maximum engagement. It should be suitable for direct use as text on the image.'),
-  imageGenerationPrompt: z.string().describe('The fully constructed image generation prompt, incorporating the user niche, category, generated headline, enhanced user image description, and branding considerations (logo URL, contact), built upon a universal template. This prompt should aim for non-stock, content-rich visuals, considering social media aspect ratios (like 1:1 square or 4:5 portrait) and potentially including the headline text directly in the image design.'),
+  imageGenerationPrompt: z.string().describe('The fully constructed image generation prompt, incorporating the user niche, category, generated headline, enhanced user image description, and branding considerations (logo URL, contact), built upon a universal template. This prompt should aim for non-stock, content-rich visuals, considering social media aspect ratios (like 1:1 square or 4:5 portrait) and potentially including the headline text directly in the image design. It should detail visual hooks, alignment, styles, colors, and mood.'),
   logoImageUrlForImageGen: z.string().optional().describe("The user's logo image URL, passed through if provided, to be used by the image generation flow."),
 });
 export type GeneratePostDetailsOutput = z.infer<typeof GeneratePostDetailsOutputSchema>;
@@ -88,10 +88,16 @@ Based on this information, please generate the following:
 
     *   Replace \\"{GENERATED_HEADLINE_TEXT}\\" with the \`headlineText\` you just generated (item 5).
     *   For the "[DETAILED_IMAGE_DESCRIPTION_AREA]" part:
-        *   Start with a general description based on "{{userNiche}}", "{{userCategory}}", and the generated \`headlineText\`. Aim for originality, visual appeal, and a content-rich design avoiding generic stock photo appearances. Describe a scene or concept in detail with rich visual language, focusing on elements, colors, textures, lighting, and overall mood.
-        *   If a \`userImageDescription\` ("{{{userImageDescription}}}") was provided, you MUST expand upon it. Incorporate their specified elements, colors, text orientation, positions, and any other details. Enhance their description to make it richer, more vivid, and ensure it forms a coherent and effective part of the overall image prompt.
+        *   Your goal is to create a rich, detailed description for this area. Start by describing a compelling **visual scene or concept** based on "{{userNiche}}", "{{userCategory}}", and the generated \`headlineText\`. Think about a **visual hook** – what makes the image immediately intriguing?
+        *   Specify an overall **visual style** (e.g., photorealistic, illustrative, abstract, minimalist, retro, futuristic, cinematic, watercolor, 3D render, flat design).
+        *   Detail the **composition and alignment** of key elements. How are things arranged? Is there a specific focal point? Describe the perspective (e.g., eye-level, bird's-eye view).
+        *   For the headline text \\\`"{GENERATED_HEADLINE_TEXT}"\\\` (which is already mentioned in the template as being on the design), elaborate on its desired **font style, weight, and any visual effects** (e.g., "The headline '{GENERATED_HEADLINE_TEXT}' should be in a bold, clean sans-serif font with a subtle drop shadow for readability", "Use an elegant script font for the headline, slightly tilted upwards").
+        *   Describe specific **objects, characters (if any), setting, and overall mood** (e.g., joyful, mysterious, serene, energetic).
+        *   Detail the **color palette** (e.g., "a warm and inviting palette with earthy tones and a pop of vibrant orange," "a cool and modern palette dominated by blues and silvers with neon accents," "monochromatic with varying shades of green").
+        *   Aim for originality, visual appeal, and a content-rich design, avoiding generic stock photo appearances.
+        *   If a \`userImageDescription\` ("{{{userImageDescription}}}") was provided, you MUST expand upon it. Incorporate their specified elements, colors, text orientation, font styles, visual styles, positions, and any other details. Enhance their description by integrating the aspects above (visual hook, style, composition, font details, mood, palette) to make it richer, more vivid, and ensure it forms a coherent and effective part of the overall image prompt. If they specified a font style, prioritize that.
         *   {{#if userLogoImageUrl}}VERY IMPORTANT: The user has provided a logo URL: {{{userLogoImageUrl}}}. This logo URL itself will be passed to the image generator. Your task for this [DETAILED_IMAGE_DESCRIPTION_AREA] is to describe how the main generated image should be designed to ACCOMMODATE or COMPLEMENT this user-provided logo. For example, you might instruct the image generator to "Attempt to fetch the logo from the provided URL and integrate it smoothly into the design, perhaps in the bottom-right corner." or "Design the overall visual style to be harmonious with a typical company logo that will be referenced by URL." or "Ensure the color palette of the main image harmonizes with a typical company logo that might be overlaid." Ensure your instructions clearly guide the image generator on how to use/consider the logo from the URL. Do NOT try to describe the logo itself in detail here, but rather how the scene should relate to it.{{/if}}
-        *   {{#if userContactInfoDescription}}For text-based contact info ideas: "{{{userContactInfoDescription}}}". Incorporate this by describing visual elements, for example, suggest "subtle, stylized icons representing a phone and email at the bottom" or "a designated area at the lower edge for contact details."{{/if}}
+        *   {{#if userContactInfoDescription}}For text-based contact info ideas: "{{{userContactInfoDescription}}}". Incorporate this by describing visual elements, for example, suggest "subtle, stylized icons representing a phone and email at the bottom" or "a designated area at the lower edge for contact details, rendered in a small, legible font."{{/if}}
         *   Combine all these aspects into a single, coherent paragraph for the "[DETAILED_IMAGE_DESCRIPTION_AREA]". Ensure this area focuses on visual descriptions and not just listing features.
 
 Ensure your output strictly adheres to the defined output schema for all fields (excluding logoImageUrlForImageGen, which is handled by the flow). The final \`imageGenerationPrompt\` should be a single, complete string.
@@ -116,3 +122,5 @@ const generatePostDetailsFlow = ai.defineFlow(
     }; 
   }
 );
+
+    
