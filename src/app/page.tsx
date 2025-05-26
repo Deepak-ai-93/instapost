@@ -12,8 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-// import { Toaster } from "@/components/ui/toaster"; // Toaster is in RootLayout
-import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, LayoutGrid, Edit3, Edit, Images, Building, Phone, LinkIcon } from "lucide-react";
+import { Loader2, Download, Copy, Sparkles, Image as ImageIcon, Wand2, Palette, FileText, Info, Edit3, Edit, Building, Phone, LinkIcon, MessageSquareQuote } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -21,8 +20,9 @@ export default function InstaGeniusPage() {
   const [userNiche, setUserNiche] = useState<string>("");
   const [userCategory, setUserCategory] = useState<string>("");
   const [userImageDescription, setUserImageDescription] = useState<string>("");
-  const [userLogoImageUrl, setUserLogoImageUrl] = useState<string>(""); // Changed from DataUri to ImageUrl
+  const [userLogoImageUrl, setUserLogoImageUrl] = useState<string>("");
   const [userContactInfoDescription, setUserContactInfoDescription] = useState<string>("");
+  const [userHookThreadStyleDescription, setUserHookThreadStyleDescription] = useState<string>("");
   const [userEditInstruction, setUserEditInstruction] = useState<string>("");
   
   const [engagingCaption, setEngagingCaption] = useState<string>("");
@@ -30,7 +30,7 @@ export default function InstaGeniusPage() {
   const [hashtags, setHashtags] = useState<string>("");
   const [suggestedPostTime, setSuggestedPostTime] = useState<string>("");
   const [imageGenerationPrompt, setImageGenerationPrompt] = useState<string>("");
-  const [generatedImageDataUris, setGeneratedImageDataUris] = useState<string[]>([]); // Will hold max 1 image URI
+  const [generatedImageDataUris, setGeneratedImageDataUris] = useState<string[]>([]);
   const [headlineText, setHeadlineText] = useState<string>("");
 
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -44,8 +44,9 @@ export default function InstaGeniusPage() {
     setUserNiche("");
     setUserCategory("");
     setUserImageDescription("");
-    setUserLogoImageUrl(""); // Resetting image URL
+    setUserLogoImageUrl("");
     setUserContactInfoDescription("");
+    setUserHookThreadStyleDescription("");
     setUserEditInstruction("");
     setEngagingCaption("");
     setProfessionalCaption("");
@@ -75,15 +76,15 @@ export default function InstaGeniusPage() {
     setHeadlineText("");
     setUserEditInstruction("");
 
-
     try {
       setCurrentLoadingStep("Generating post details...");
       const detailsResult = await generatePostDetails({ 
         userNiche, 
         userCategory,
         userImageDescription: userImageDescription.trim() || undefined,
-        userLogoImageUrl: userLogoImageUrl.trim() || undefined, // Passing URL
+        userLogoImageUrl: userLogoImageUrl.trim() || undefined,
         userContactInfoDescription: userContactInfoDescription.trim() || undefined,
+        userHookThreadStyleDescription: userHookThreadStyleDescription.trim() || undefined,
       });
       setEngagingCaption(detailsResult.engagingCaption);
       setProfessionalCaption(detailsResult.professionalCaption);
@@ -96,7 +97,7 @@ export default function InstaGeniusPage() {
         setCurrentLoadingStep("Generating AI image (this may take a moment)...");
         try {
           const imageGenInput: GenerateImageFromPromptInput = { prompt: detailsResult.imageGenerationPrompt };
-          if (detailsResult.logoImageUrlForImageGen) { // Check for logo URL from details
+          if (detailsResult.logoImageUrlForImageGen) {
             imageGenInput.logoImageUrl = detailsResult.logoImageUrlForImageGen;
           }
           const imageResult = await generateImageFromPrompt(imageGenInput);
@@ -142,7 +143,7 @@ export default function InstaGeniusPage() {
         editInstruction: userEditInstruction,
       };
       if (userLogoImageUrl.trim()) { 
-        imageEditInput.logoImageUrl = userLogoImageUrl.trim(); // Pass logo URL for edits too
+        imageEditInput.logoImageUrl = userLogoImageUrl.trim();
       }
       const imageResult = await generateImageFromPrompt(imageEditInput);
       setGeneratedImageDataUris(imageResult.imageDataUris); 
@@ -206,7 +207,7 @@ export default function InstaGeniusPage() {
         <Card className="w-full max-w-3xl shadow-xl rounded-xl overflow-hidden mb-8">
           <CardHeader>
             <CardTitle className="flex items-center"><FileText className="mr-2 h-6 w-6 text-primary" /> Define Your Content Focus</CardTitle>
-            <CardDescription>Enter niche, category, and optionally describe your image and branding. AI will generate content and an image. You can then edit the image.</CardDescription>
+            <CardDescription>Enter niche, category, and optionally describe your image, branding, and hook styles. AI will generate content and an image. You can then edit the image.</CardDescription>
           </CardHeader>
           <CardContent className="p-6 sm:p-10 space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -260,6 +261,22 @@ export default function InstaGeniusPage() {
                 <p className="text-xs text-muted-foreground mt-1">Specify elements, colors, text style/position, overall aesthetic. AI will enhance this.</p>
             </div>
             
+            <div>
+              <Label htmlFor="hook-thread-style-input" className="text-lg font-semibold text-foreground mb-2 block flex items-center">
+                <MessageSquareQuote className="h-5 w-5 mr-2 text-primary" /> Hook/Thread Visual Style (Optional)
+              </Label>
+              <Textarea
+                id="hook-thread-style-input"
+                value={userHookThreadStyleDescription}
+                onChange={(e) => setUserHookThreadStyleDescription(e.target.value)}
+                placeholder="e.g., 'Make the headline hook large and centered at top', 'Subtle visual cues for a thread, like unfolding elements', 'Bold, playful font for hook text'"
+                rows={2}
+                className="focus:ring-accent focus:border-accent text-base resize-none"
+                disabled={isLoading || isEditingImage}
+              />
+              <p className="text-xs text-muted-foreground mt-1">Describe visual style/position for hooks or thread elements on the image.</p>
+            </div>
+
             <div className="space-y-4">
                 <Label className="text-lg font-semibold text-foreground mb-2 block">
                     Branding & Contact (Optional - AI will try to incorporate these)
@@ -324,7 +341,7 @@ export default function InstaGeniusPage() {
                       variant="outline" 
                       onClick={resetAllContent} 
                       aria-label="Clear all inputs and generated content" 
-                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoImageUrl && !userContactInfoDescription && !hasGeneratedContent && !userEditInstruction}
+                      disabled={(isLoading || isEditingImage) && !userNiche && !userCategory && !userImageDescription && !userLogoImageUrl && !userContactInfoDescription && !userHookThreadStyleDescription && !hasGeneratedContent && !userEditInstruction}
                     >
                         Clear All
                     </Button>
@@ -510,7 +527,8 @@ export default function InstaGeniusPage() {
           <p>Powered by AI magic ✨</p>
         </footer>
       </div>
-      {/* <Toaster />  Toaster is now in RootLayout */}
     </>
   );
 }
+
+    
